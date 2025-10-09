@@ -4,6 +4,7 @@ import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
 import '../index.css';
 import { HeroSection } from '../components/HeroSection';
 import { ProductGrid } from "../components/ProductGrid.jsx";
+import { ProcessSection } from "../components/ProcessSection.jsx";
 
 export const Home = () => {
 
@@ -39,6 +40,7 @@ export const Home = () => {
 		<div className="text-center mt-5">
 			<HeroSection />
 			<ProductGrid />
+			<ProcessSection />
 			
 			<div className="alert alert-info">
 				{store.message ? (
