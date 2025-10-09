@@ -1,10 +1,10 @@
 import React, { useEffect } from "react"
-import rigoImageUrl from "../assets/img/rigo-baby.jpg";
 import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
 import '../index.css';
 import { HeroSection } from '../components/HeroSection';
 import { ProductGrid } from "../components/ProductGrid.jsx";
 import { ProcessSection } from "../components/ProcessSection.jsx";
+import { AboutSection } from "../components/AboutSection.jsx";
 
 export const Home = () => {
 
@@ -41,6 +41,7 @@ export const Home = () => {
 			<HeroSection />
 			<ProductGrid />
 			<ProcessSection />
+			<AboutSection />
 			
 			<div className="alert alert-info">
 				{store.message ? (
