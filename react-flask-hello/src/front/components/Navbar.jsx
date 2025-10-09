@@ -1,19 +1,79 @@
-import { Link } from "react-router-dom";
+import React, { useState } from 'react';
 
 export const Navbar = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-	return (
-		<nav className="navbar navbar-light bg-light">
-			<div className="container">
-				<Link to="/">
-					<span className="navbar-brand mb-0 h1">React Boilerplate</span>
-				</Link>
-				<div className="ml-auto">
-					<Link to="/demo">
-						<button className="btn btn-primary">Check the Context in action</button>
-					</Link>
-				</div>
-			</div>
-		</nav>
-	);
+  return (
+    <nav className="bg-[#f7f2e7] border-b border-[#2f4823]/20 sticky top-0 z-50 transition-all duration-300 shadow-sm rounded-b-2xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
+          
+          {/* Logo - Con rounded y color principal */}
+          <div className="flex-shrink-0 transform hover:scale-105 transition-transform duration-300">
+            <div className="bg-[#2f4823] text-white px-4 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
+              <h1 className="text-2xl font-bold font-serif tracking-tight">
+                PEREGRINOS
+                <span className="text-[#f7f2e7]">.</span>SHOP
+              </h1>
+              <p className="text-xs text-[#f7f2e7]/80 mt-1 font-medium">
+                Ropa Católica • 100% Algodón
+              </p>
+            </div>
+          </div>
+
+          {/* Menú Desktop - Con rounded y color principal */}
+          <div className="hidden md:flex space-x-4">
+            {['Inicio', 'Productos', 'Nuestra Historia', 'Santoral', 'Contacto'].map((item) => (
+              <a 
+                key={item}
+                href="#" 
+                className="text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium transition-all duration-300 relative group px-4 py-2 rounded-xl"
+              >
+                {item}
+                <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-[#2f4823] transition-all duration-300 group-hover:w-3/4 rounded-full"></span>
+              </a>
+            ))}
+          </div>
+
+          {/* Iconos - Con rounded y color principal */}
+          <div className="flex items-center space-x-3">
+            <button className="text-[#2f4823] hover:bg-[#2f4823] hover:text-white transform hover:scale-110 transition-all duration-300 p-3 rounded-2xl border border-[#2f4823]/30 hover:border-transparent">
+              <span className="text-lg">🔍</span>
+            </button>
+            <button className="text-[#2f4823] hover:bg-[#2f4823] hover:text-white transform hover:scale-110 transition-all duration-300 p-3 rounded-2xl border border-[#2f4823]/30 hover:border-transparent relative group">
+              <span className="text-lg">🛒</span>
+              <span className="absolute -top-1 -right-1 bg-[#779385] text-white rounded-full w-6 h-6 text-xs flex items-center justify-center font-bold transform group-hover:scale-110 group-hover:bg-white group-hover:text-[#2f4823] transition-all duration-300 shadow-lg">
+                0
+              </span>
+            </button>
+            
+            {/* Botón Menú Mobile */}
+            <button 
+              className="md:hidden text-[#2f4823] hover:bg-[#2f4823] hover:text-white p-3 rounded-2xl border border-[#2f4823]/30 hover:border-transparent transition-all duration-300"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <span className="text-xl">{isMenuOpen ? '✕' : '☰'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Menú Mobile - Con rounded y color principal */}
+        <div className={`md:hidden transition-all duration-500 ease-in-out overflow-hidden ${
+          isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="py-4 space-y-2 bg-white/90 backdrop-blur-sm rounded-2xl mt-3 border border-[#2f4823]/20 shadow-lg">
+            {['Inicio', 'Productos', 'Nuestra Historia', 'Santoral', 'Contacto'].map((item) => (
+              <a 
+                key={item}
+                href="#" 
+                className="block text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-6 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-3 mx-2"
+              >
+                {item}
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
 };

@@ -1,11 +1,90 @@
-export const Footer = () => (
-	<footer className="footer mt-auto py-3 text-center">
-		<p>
-			Check the <a target="_blank" href="https://4geeks.com/docs/start/react-flask-template">template documentation</a> <i className="fa-solid fa-file"></i> for help.
-		</p>
-		<p>
-			Made with <i className="fa fa-heart text-danger" /> by{" "}
-			<a href="http://www.4geeksacademy.com">4Geeks Academy</a>
-		</p>
-	</footer>
-);
+import React from 'react';
+
+export const Footer = () => {
+  return (
+    <footer className="bg-[#2f4823] text-white mt-20 rounded-t-3xl">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Sección Principal del Footer */}
+        <div className="py-16 grid grid-cols-1 md:grid-cols-4 gap-8">
+          
+          {/* Columna 1: Logo y Descripción */}
+          <div className="md:col-span-2">
+            <div className="bg-[#f7f2e7] text-[#2f4823] px-6 py-4 rounded-2xl inline-block mb-6">
+              <h2 className="text-2xl font-bold font-serif">PEREGRINOS.SHOP</h2>
+              <p className="text-sm opacity-80 mt-1">Vistiendo la Fe con Amor</p>
+            </div>
+            <p className="text-[#f7f2e7]/80 text-lg leading-relaxed max-w-md">
+              Creemos que la moda puede ser una forma de evangelización. Cada prenda está confeccionada con amor, fe y el mejor algodón 100% natural.
+            </p>
+            
+            {/* Redes Sociales */}
+            <div className="flex space-x-4 mt-6">
+              {['📱', '📷', '📘', '🎵'].map((icon, index) => (
+                <button 
+                  key={index}
+                  className="bg-[#779385] hover:bg-[#f7f2e7] hover:text-[#2f4823] transform hover:scale-110 transition-all duration-300 w-12 h-12 rounded-2xl flex items-center justify-center text-lg shadow-lg"
+                >
+                  {icon}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Columna 2: Enlaces Rápidos */}
+          <div>
+            <h3 className="text-xl font-bold font-serif mb-6 text-[#f7f2e7]">Navegación</h3>
+            <ul className="space-y-3">
+              {['Inicio', 'Productos', 'Nuestra Historia', 'Santoral', 'Contacto'].map((item) => (
+                <li key={item}>
+                  <a 
+                    href="#" 
+                    className="text-[#f7f2e7]/80 hover:text-white transition-all duration-300 hover:translate-x-2 block py-1 rounded-lg hover:bg-white/10 px-3"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Columna 3: Contacto */}
+          <div>
+            <h3 className="text-xl font-bold font-serif mb-6 text-[#f7f2e7]">Contacto</h3>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 text-[#f7f2e7]/80">
+                <span className="bg-[#779385] w-8 h-8 rounded-lg flex items-center justify-center">📧</span>
+                <span>info@peregrinos.shop</span>
+              </div>
+              <div className="flex items-center space-x-3 text-[#f7f2e7]/80">
+                <span className="bg-[#779385] w-8 h-8 rounded-lg flex items-center justify-center">📞</span>
+                <span>+57 300 123 4567</span>
+              </div>
+              <div className="flex items-center space-x-3 text-[#f7f2e7]/80">
+                <span className="bg-[#779385] w-8 h-8 rounded-lg flex items-center justify-center">📍</span>
+                <span>Colombia</span>
+              </div>
+            </div>
+
+            {/* Botón de Oración */}
+            <button className="mt-6 bg-[#f7f2e7] text-[#2f4823] hover:bg-white hover:scale-105 transform transition-all duration-300 font-bold py-3 px-6 rounded-2xl shadow-lg w-full">
+              🙏 Pedir una Oración
+            </button>
+          </div>
+        </div>
+
+        {/* Línea Separadora */}
+        <div className="border-t border-[#779385]/30"></div>
+
+        {/* Copyright */}
+        <div className="py-8 text-center">
+          <p className="text-[#f7f2e7]/60">
+            © 2024 Peregrinos.Shop - Todos los derechos reservados. 
+            <span className="block mt-2 text-sm">Hecho con 💚 y Fe</span>
+          </p>
+        </div>
+
+      </div>
+    </footer>
+  );
+};
