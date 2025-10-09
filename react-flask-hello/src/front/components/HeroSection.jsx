@@ -1,26 +1,36 @@
 import React from 'react';
+import san_jose from '../assets/img/hero/san_jose.webp'
 
 export const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden rounded-b-3xl">
-      
+
       {/* Video de Fondo */}
       <div className="absolute inset-0 z-0">
-        <div className="bg-[#2f4823] opacity-90 absolute inset-0 z-10"></div>
-        <video 
-          autoPlay 
-          muted 
-          loop 
+        <div className="bg-[#2f4823] opacity-50 absolute inset-0 z-10"></div>
+          {/* imagen temporal */}
+          <img 
+            src={san_jose} 
+            alt="San José - Peregrinos Shop"
+            className='w-full h-full object-cover'
+          />
+
+        {/* <video
+          autoPlay
+          muted
+          loop
           className="w-full h-full object-cover"
           poster="https://images.unsplash.com/photo-1515377905703-c4788e51af15?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
         >
-          <source src="https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-person-sewing-with-a-sewing-machine-41537-large.mp4" type="video/mp4" />
-        </video>
+          <source 
+            src="https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-person-sewing-with-a-sewing-machine-41537-large.mp4" 
+            type="video/mp4" />
+        </video> */}
       </div>
 
       {/* Contenido Principal */}
       <div className="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-        
+
         {/* Badge Artesanal */}
         <div className="inline-flex items-center bg-[#f7f2e7] text-[#2f4823] px-6 py-3 rounded-full mb-8 shadow-lg">
           <span className="w-2 h-2 bg-[#779385] rounded-full mr-2 animate-pulse"></span>
@@ -29,16 +39,20 @@ export const HeroSection = () => {
 
         {/* Título Principal */}
         <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 font-serif leading-tight">
-          Viste tu
-          <span className="block text-[#f7f2e7] mt-2">Fe con</span>
-          <span className="block text-[#779385]">Propósito</span>
+          No es <span className="italic font-normal">moda</span>
+          <br />
+          <span className="text-[#f7f2e7]">
+            es <span className="text-[#c08410]">Fe</span> en
+          </span>
+          <br />
+          <span className="text-[#c08410]">Acción</span>
         </h1>
 
         {/* Descripción */}
         <p className="text-xl md:text-2xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed">
-          Descubre nuestra colección de <span className="text-[#f7f2e7] font-semibold">ropa católica</span> 
-          confeccionada con amor, fe y el mejor algodón natural. 
-          <span className="block mt-2">Cada prenda cuenta una historia de fe.</span>
+          Confeccionamos  <span className="text-[#f7f2e7] font-semibold"> símbolos de fe </span>
+          con amor católico, oración y algodón 100% puro.
+          <span className="block mt-2">Tu estilo, tu credo, tu legado.</span>
         </p>
 
         {/* Botones de Acción */}
@@ -47,7 +61,7 @@ export const HeroSection = () => {
             <span>🛍️</span>
             <span>Descubrir Colección</span>
           </button>
-          
+
           <button className="border-2 border-white text-white hover:bg-white hover:text-[#2f4823] transform hover:scale-105 transition-all duration-300 font-bold text-lg px-12 py-4 rounded-2xl flex items-center space-x-3">
             <span>📖</span>
             <span>Nuestra Historia</span>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import logo_blanco from '../assets/img/branding/logo_blanco.png'
 
 export const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,13 +12,11 @@ export const Navbar = () => {
           {/* Logo - Con rounded y color principal */}
           <div className="flex-shrink-0 transform hover:scale-105 transition-transform duration-300">
             <div className="bg-[#2f4823] text-white px-4 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
-              <h1 className="text-2xl font-bold font-serif tracking-tight">
-                PEREGRINOS
-                <span className="text-[#f7f2e7]">.</span>SHOP
-              </h1>
-              <p className="text-xs text-[#f7f2e7]/80 mt-1 font-medium">
-                Ropa Católica • 100% Algodón
-              </p>
+              <img 
+                src={logo_blanco} 
+                alt="Peregrinos Shop" 
+                className='h-12 w-auto'
+              />
             </div>
           </div>
 
