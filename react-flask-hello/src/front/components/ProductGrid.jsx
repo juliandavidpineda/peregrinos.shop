@@ -1,6 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+
 
 export const ProductGrid = () => {
+
+  const navigate = useNavigate();
+
   const featuredProducts = [
     {
       id: 1,
@@ -110,7 +116,10 @@ export const ProductGrid = () => {
 
         {/* Botón Ver Todos */}
         <div className="text-center mt-12">
-          <button className="bg-[#2f4823] hover:bg-[#1f371c] text-white font-bold py-4 px-12 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg text-lg">
+          <button 
+            className="bg-[#2f4823] hover:bg-[#1f371c] text-white font-bold py-4 px-12 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg text-lg"
+            onClick={() => navigate('/shop-page')}
+          >
             Ver Colección Completa
           </button>
         </div>
