@@ -11,6 +11,10 @@ import { Single } from "./pages/Single";
 import { Demo } from "./pages/Demo";
 import ShopPage from "./pages/ShopPage";
 import ProductDetailPage from './pages/ProductDetailPage';
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderConfirmation from "./pages/OrderConfirmation";
+
 
 export const router = createBrowserRouter(
     createRoutesFromElements(
@@ -29,6 +33,9 @@ export const router = createBrowserRouter(
         <Route path="/demo" element={<Demo />} />
         <Route path="/shop-page" element={ <ShopPage />} />
         <Route path="/product/:productId" element={<ProductDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="checkout" element={<CheckoutPage />} />
+        <Route path="order-confirmation" element={<OrderConfirmation /> } />
       </Route>
     )
 );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useCart } from '../../context/CartContext';
 
 const ProductInfo = ({ 
   product, 
@@ -6,16 +7,26 @@ const ProductInfo = ({
   onSizeChange, 
   quantity, 
   onQuantityChange, 
-  onAddToCart, 
   onBuyNow 
 }) => {
   
+  const { addToCart } = useCart();
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0
     }).format(price);
+  };
+
+  const handleAddToCart = () => {
+    if (!selectedSize) {
+      alert('Por favor selecciona una talla');
+      return;
+    }
+
+    addToCart(product, selectedSize, quantity);
   };
 
   const renderStars = (rating) => {
@@ -134,7 +145,7 @@ const ProductInfo = ({
       {/* Botones de acción */}
       <div className="space-y-3 mb-6">
         <button 
-          onClick={onAddToCart}
+          onClick={handleAddToCart}
           disabled={!product.inStock}
           className="w-full bg-[#2f4823] text-white py-4 rounded-lg font-semibold hover:bg-[#1f3219] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
