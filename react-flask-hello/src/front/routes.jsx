@@ -14,6 +14,9 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderConfirmation from "./pages/OrderConfirmation";
+import SantoralPage from "./pages/SantoralPage";
+import ContactPage from "./pages/ContactPage";
+import AboutPage from "./pages/AboutPage";
 
 
 export const router = createBrowserRouter(
@@ -36,6 +39,9 @@ export const router = createBrowserRouter(
         <Route path="/cart" element={<CartPage />} />
         <Route path="checkout" element={<CheckoutPage />} />
         <Route path="order-confirmation" element={<OrderConfirmation /> } />
+        <Route path="/santoral" element={<SantoralPage /> } />
+        <Route path="/contact" element={<ContactPage /> } />
+        <Route path="about" element={<AboutPage /> } />
       </Route>
     )
 );
