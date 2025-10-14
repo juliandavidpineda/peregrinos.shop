@@ -79,7 +79,7 @@ export const Footer = () => {
         {/* Copyright */}
         <div className="py-8 text-center">
           <p className="text-[#f7f2e7]/60">
-            © 2024 Peregrinos.Shop - Todos los derechos reservados. 
+            © 2025 Peregrinos.Shop - Todos los derechos reservados. 
             <span className="block mt-2 text-sm">Hecho con 💚 y Fe</span>
           </p>
         </div>

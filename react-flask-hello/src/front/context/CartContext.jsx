@@ -1,10 +1,27 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Cargar carrito desde localStorage al iniciar
+  useEffect(() => {
+    const savedCart = localStorage.getItem('peregrinos_cart');
+    if (savedCart) {
+      try {
+        setCartItems(JSON.parse(savedCart));
+      } catch (error) {
+        console.error('Error loading cart from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Guardar carrito en localStorage cuando cambie
+  useEffect(() => {
+    localStorage.setItem('peregrinos_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   const addToCart = (product, size, quantity = 1) => {
     setCartItems(prev => {
@@ -25,7 +42,7 @@ export const CartProvider = ({ children }) => {
         productId: product.id,
         name: product.name,
         price: product.price,
-        image: product.images[0],
+        image: product.images?.[0] || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop',
         size,
         quantity
       }];
@@ -51,6 +68,19 @@ export const CartProvider = ({ children }) => {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
   };
 
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
+  // Calcular totales
+  const getCartTotal = () => {
+    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  const getCartItemsCount = () => {
+    return cartItems.reduce((count, item) => count + item.quantity, 0);
+  };
+
   return (
     <CartContext.Provider value={{
       cartItems,
@@ -58,7 +88,10 @@ export const CartProvider = ({ children }) => {
       setIsCartOpen,
       addToCart,
       updateQuantity,
-      removeFromCart
+      removeFromCart,
+      clearCart,
+      getCartTotal,
+      getCartItemsCount
     }}>
       {children}
     </CartContext.Provider>

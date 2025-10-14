@@ -207,13 +207,7 @@ const ProductInfo = ({
           Comprar Ahora
         </button>
       </div>
-
-      {/* Mensaje espiritual */}
-      <div className="p-4 bg-[#f7f2e7] rounded-lg border border-[#779385]/20 text-center">
-        <p className="text-sm text-[#2f4823] italic">
-          "Cada compra apoya nuestra misión espiritual"
-        </p>
-      </div>
+      
     </div>
   );
 };
