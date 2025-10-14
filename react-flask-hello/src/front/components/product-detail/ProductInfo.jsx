@@ -26,11 +26,16 @@ const ProductInfo = ({
       return;
     }
 
+    if (!product.in_stock) {
+      alert('Este producto está agotado');
+      return;
+    }
+
     addToCart(product, selectedSize, quantity);
   };
 
   const renderStars = (rating) => {
-    const fullStars = Math.floor(rating);
+    const fullStars = Math.floor(rating || 0);
     const emptyStars = 5 - fullStars;
     
     return (
@@ -49,14 +54,19 @@ const ProductInfo = ({
     <div className="bg-white rounded-lg shadow-sm border border-[#779385]/20 p-6 sticky top-4">
       {/* Badges */}
       <div className="flex gap-2 mb-4">
-        {product.isNew && (
+        {product.is_new && (
           <span className="bg-[#2f4823] text-white px-3 py-1 rounded-full text-xs font-bold">
             Nuevo
           </span>
         )}
-        {product.isOnSale && (
+        {product.is_on_sale && (
           <span className="bg-[#779385] text-white px-3 py-1 rounded-full text-xs font-bold">
             Oferta
+          </span>
+        )}
+        {!product.in_stock && (
+          <span className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+            Agotado
           </span>
         )}
         <span className="bg-[#f7f2e7] text-[#2f4823] px-3 py-1 rounded-full text-xs font-bold border border-[#779385]/20">
@@ -72,22 +82,22 @@ const ProductInfo = ({
       {/* Rating */}
       <div className="flex items-center gap-2 mb-4">
         {renderStars(product.rating)}
-        <span className="text-[#779385] text-sm">({product.reviewCount} reseñas)</span>
+        <span className="text-[#779385] text-sm">({product.review_count || 0} reseñas)</span>
       </div>
 
       {/* Precio */}
       <div className="mb-6">
-        {product.isOnSale && product.originalPrice && (
+        {product.is_on_sale && product.original_price && (
           <div className="flex items-center gap-3 mb-2">
             <span className="text-xl text-[#779385] line-through">
-              {formatPrice(product.originalPrice)}
+              {formatPrice(product.original_price)}
             </span>
             <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-sm font-bold">
-              Ahorras {formatPrice(product.originalPrice - product.price)}
+              Ahorras {formatPrice(product.original_price - product.price)}
             </span>
           </div>
         )}
-        <span className="text-3xl font-bold text-[#2f4823]">
+        <span className={`text-3xl font-bold ${product.is_on_sale ? 'text-red-600' : 'text-[#2f4823]'}`}>
           {formatPrice(product.price)}
         </span>
       </div>
@@ -102,19 +112,29 @@ const ProductInfo = ({
         </label>
         
         <div className="flex flex-wrap gap-2">
-          {product.sizes.map((size) => (
+          {(product.sizes || []).map((size) => (
             <button
               key={size}
               onClick={() => onSizeChange(size)}
+              disabled={!product.in_stock}
               className={`w-12 h-12 rounded-lg border-2 font-semibold transition-all ${
                 selectedSize === size
                   ? 'border-[#2f4823] bg-[#2f4823] text-white'
-                  : 'border-[#779385] text-[#2f4823] hover:border-[#2f4823] hover:bg-[#f7f2e7]'
+                  : product.in_stock
+                    ? 'border-[#779385] text-[#2f4823] hover:border-[#2f4823] hover:bg-[#f7f2e7]'
+                    : 'border-gray-300 text-gray-400 cursor-not-allowed'
               }`}
             >
               {size}
             </button>
           ))}
+          
+          {/* Mensaje si no hay tallas definidas */}
+          {(product.sizes || []).length === 0 && (
+            <p className="text-[#779385] text-sm italic">
+              Talla única
+            </p>
+          )}
         </div>
       </div>
 
@@ -126,36 +146,63 @@ const ProductInfo = ({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-            className="w-10 h-10 rounded-lg border border-[#779385] text-[#779385] flex items-center justify-center hover:bg-[#779385] hover:text-white transition-colors"
+            disabled={!product.in_stock}
+            className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-colors ${
+              product.in_stock
+                ? 'border-[#779385] text-[#779385] hover:bg-[#779385] hover:text-white'
+                : 'border-gray-300 text-gray-400 cursor-not-allowed'
+            }`}
           >
             -
           </button>
-          <span className="w-12 text-center font-semibold text-[#2f4823]">
+          <span className={`w-12 text-center font-semibold ${
+            product.in_stock ? 'text-[#2f4823]' : 'text-gray-400'
+          }`}>
             {quantity}
           </span>
           <button 
             onClick={() => onQuantityChange(quantity + 1)}
-            className="w-10 h-10 rounded-lg border border-[#779385] text-[#779385] flex items-center justify-center hover:bg-[#779385] hover:text-white transition-colors"
+            disabled={!product.in_stock}
+            className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-colors ${
+              product.in_stock
+                ? 'border-[#779385] text-[#779385] hover:bg-[#779385] hover:text-white'
+                : 'border-gray-300 text-gray-400 cursor-not-allowed'
+            }`}
           >
             +
           </button>
         </div>
+        
+        {/* Stock disponible */}
+        {product.in_stock && product.stock_quantity && (
+          <p className="text-sm text-[#779385] mt-2">
+            {product.stock_quantity} unidades disponibles
+          </p>
+        )}
       </div>
 
       {/* Botones de acción */}
       <div className="space-y-3 mb-6">
         <button 
           onClick={handleAddToCart}
-          disabled={!product.inStock}
-          className="w-full bg-[#2f4823] text-white py-4 rounded-lg font-semibold hover:bg-[#1f3219] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          disabled={!product.in_stock}
+          className={`w-full py-4 rounded-lg font-semibold transition-colors ${
+            product.in_stock
+              ? 'bg-[#2f4823] text-white hover:bg-[#1f3219]'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
         >
-          {product.inStock ? 'Agregar al Carrito' : 'Agotado'}
+          {product.in_stock ? 'Agregar al Carrito' : 'Agotado'}
         </button>
         
         <button 
           onClick={onBuyNow}
-          disabled={!product.inStock}
-          className="w-full bg-[#779385] text-white py-4 rounded-lg font-semibold hover:bg-[#5a7568] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+          disabled={!product.in_stock}
+          className={`w-full py-4 rounded-lg font-semibold transition-colors ${
+            product.in_stock
+              ? 'bg-[#779385] text-white hover:bg-[#5a7568]'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
         >
           Comprar Ahora
         </button>

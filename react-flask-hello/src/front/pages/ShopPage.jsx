@@ -3,112 +3,42 @@ import ShopHero from '../components/shop/ShopHero';
 import ShopSidebar from '../components/shop/ShopSidebar';
 import ProductFilters from '../components/shop/ProductFilters';
 import ProductGrid from '../components/shop/ProductGrid';
-
-// Productos específicos para tienda católica de ropa
-const sampleProducts = [
-  {
-    id: 1,
-    name: "Camiseta BeTone Hombre",
-    price: 120000,
-    originalPrice: 150000,
-    image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop",
-    category: "Hombre",
-    subcategory: "Camiseta BeTone",
-    rating: 4.8,
-    reviewCount: 24,
-    isNew: true,
-    isOnSale: true,
-    features: ["Algodón orgánico", "Diseño modesto", "Comfortable"]
-  },
-  {
-    id: 2,
-    name: "Blusa Bordada Mujer",
-    price: 180000,
-    originalPrice: null,
-    image: "https://images.unsplash.com/photo-1589810635657-232948472d98?w=300&h=300&fit=crop",
-    category: "Mujer",
-    subcategory: "Blusa Bordada",
-    rating: 4.9,
-    reviewCount: 36,
-    isNew: true,
-    isOnSale: false,
-    features: ["Bordado artesanal", "Tela natural", "Elegancia espiritual"]
-  },
-  {
-    id: 3,
-    name: "Camiseta Manga Larga con Botones",
-    price: 160000,
-    originalPrice: 190000,
-    image: "https://images.unsplash.com/photo-1589810635657-232948472d98?w=300&h=300&fit=crop",
-    category: "Hombre",
-    subcategory: "Camiseta Manga Larga con Botones",
-    rating: 4.7,
-    reviewCount: 18,
-    isNew: false,
-    isOnSale: true,
-    features: ["Algodón pima", "Botones madera", "Estilo clásico"]
-  },
-  {
-    id: 4,
-    name: "Saco con Cierre Mujer",
-    price: 250000,
-    originalPrice: 300000,
-    image: "https://images.unsplash.com/photo-1593030103066-0093718efeb9?w=300&h=300&fit=crop",
-    category: "Mujer",
-    subcategory: "Saco con Cierre",
-    rating: 4.6,
-    reviewCount: 15,
-    isNew: true,
-    isOnSale: true,
-    features: ["Lana natural", "Cierre durable", "Abrigo espiritual"]
-  },
-  {
-    id: 5,
-    name: "Camiseta BeTone Mujer",
-    price: 130000,
-    originalPrice: null,
-    image: "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=300&h=300&fit=crop",
-    category: "Mujer",
-    subcategory: "Camiseta BeTone",
-    rating: 4.8,
-    reviewCount: 29,
-    isNew: false,
-    isOnSale: false,
-    features: ["Algodón premium", "Ajuste perfecto", "Modesta elegancia"]
-  },
-  {
-    id: 6,
-    name: "Saco con Cierre Hombre",
-    price: 270000,
-    originalPrice: 320000,
-    image: "https://images.unsplash.com/photo-1554412933-514a83d2f3c8?w=300&h=300&fit=crop",
-    category: "Hombre",
-    subcategory: "Saco con Cierre",
-    rating: 4.5,
-    reviewCount: 12,
-    isNew: true,
-    isOnSale: true,
-    features: ["Material resistente", "Diseño sobrio", "Calidad premium"]
-  }
-];
+import { productService } from '../services/productService';
 
 const ShopPage = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [priceRange, setPriceRange] = useState(300000);
   const [searchTerm, setSearchTerm] = useState('');
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
 
-  // Cargar productos
+  // Cargar productos desde la API
   useEffect(() => {
     const loadProducts = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setProducts(sampleProducts);
-      setFilteredProducts(sampleProducts);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await productService.getProducts();
+        console.log('Productos cargados desde API:', response);
+        
+        if (response.products) {
+          setProducts(response.products);
+          setFilteredProducts(response.products);
+        } else {
+          throw new Error('Formato de respuesta inesperado');
+        }
+      } catch (err) {
+        console.error('Error cargando productos:', err);
+        setError('Error al cargar los productos. Por favor, intenta nuevamente.');
+        setProducts([]);
+        setFilteredProducts([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadProducts();
@@ -132,7 +62,7 @@ const ShopPage = () => {
     if (searchTerm) {
       filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.subcategory.toLowerCase().includes(searchTerm.toLowerCase())
+        (product.subcategory && product.subcategory.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -176,7 +106,7 @@ const ShopPage = () => {
         sorted.sort((a, b) => b.price - a.price);
         break;
       case 'rating-desc':
-        sorted.sort((a, b) => b.rating - a.rating);
+        sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       default:
         break;
@@ -189,6 +119,7 @@ const ShopPage = () => {
   const handleProductClick = (productId) => {
     console.log('Producto clickeado:', productId);
     // Navegar a página de detalle del producto
+    window.location.href = `/product/${productId}`;
   };
 
   // Manejar agregar al carrito
@@ -202,11 +133,18 @@ const ShopPage = () => {
     setIsMobileModalOpen(!isMobileModalOpen);
   };
 
-  // Categorías para los filtros
-  const categories = [
-    { name: "Hombre", count: sampleProducts.filter(p => p.category === "Hombre").length },
-    { name: "Mujer", count: sampleProducts.filter(p => p.category === "Mujer").length }
-  ];
+  // Obtener categorías únicas de los productos reales
+  const categories = [...new Set(products.map(product => product.category))]
+    .filter(category => category) // Remover categorías null/undefined
+    .map(category => ({
+      name: category,
+      count: products.filter(p => p.category === category).length
+    }));
+
+  // Recargar productos
+  const handleReload = () => {
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f2e7]">
@@ -218,6 +156,26 @@ const ShopPage = () => {
       />
       
       <div className="container mx-auto px-4 py-8">
+        {/* Mensaje de error */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-red-700 font-medium">{error}</p>
+                <p className="text-red-600 text-sm mt-1">
+                  Verifica que el backend esté corriendo en http://localhost:3001
+                </p>
+              </div>
+              <button
+                onClick={handleReload}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">

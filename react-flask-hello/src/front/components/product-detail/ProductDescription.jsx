@@ -4,7 +4,7 @@ const ProductDescription = ({ product }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-[#779385]/20 p-8 mb-8">
       <h3 className="font-serif font-bold text-2xl text-[#2f4823] mb-6 text-center">
-        Sobre esta Prenda Espiritual
+        Sobre esta Prenda
       </h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

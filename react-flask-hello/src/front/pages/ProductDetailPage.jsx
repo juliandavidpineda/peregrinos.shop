@@ -5,80 +5,45 @@ import ProductImageGallery from '../components/product-detail/ProductImageGaller
 import ProductInfo from '../components/product-detail/ProductInfo';
 import ProductDescription from '../components/product-detail/ProductDescription';
 import RelatedProducts from '../components/product-detail/RelatedProducts';
-
-// Datos de ejemplo - luego vendrán de tu API Python
-const sampleProducts = [
-  {
-    id: 1,
-    name: "Camiseta BeTone Hombre",
-    price: 120000,
-    originalPrice: 150000,
-    images: [
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=600&h=600&fit=crop"
-    ],
-    category: "Hombre",
-    subcategory: "Camiseta BeTone",
-    rating: 4.8,
-    reviewCount: 24,
-    isNew: true,
-    isOnSale: true,
-    features: ["Algodón orgánico 100%", "Diseño modesto", "Comfortable para todo el día", "Hecho con amor y oración"],
-    description: "Esta camiseta BeTone combina estilo y comodidad con un diseño pensado para quienes buscan vestir su fe con elegancia. Confeccionada con algodón orgánico de la más alta calidad.",
-    sizes: ["S", "M", "L", "XL", "XXL"],
-    inStock: true,
-    stockQuantity: 15,
-    materials: "100% Algodón Orgánico",
-    care: "Lavable a máquina, secado natural",
-    madeIn: "Hecho en Colombia por artesanos locales"
-  },
-  {
-    id: 2,
-    name: "Blusa Bordada Mujer",
-    price: 180000,
-    originalPrice: null,
-    images: [
-      "https://images.unsplash.com/photo-1589810635657-232948472d98?w=600&h=600&fit=crop",
-      "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=600&h=600&fit=crop"
-    ],
-    category: "Mujer",
-    subcategory: "Blusa Bordada",
-    rating: 4.9,
-    reviewCount: 36,
-    isNew: true,
-    isOnSale: false,
-    features: ["Bordado artesanal", "Tela natural", "Elegancia espiritual", "Detalles únicos"],
-    description: "Blusa con bordados artesanales que reflejan la belleza de la fe. Cada detalle está cuidadosamente elaborado para ofrecer una prenda única y especial.",
-    sizes: ["XS", "S", "M", "L"],
-    inStock: true,
-    stockQuantity: 8,
-    materials: "Algodón y encaje natural",
-    care: "Lavado a mano recomendado",
-    madeIn: "Hecho en Colombia por artesanos locales"
-  }
-];
+import { productService } from '../services/productService';
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     const loadProduct = async () => {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const foundProduct = sampleProducts.find(p => p.id === parseInt(productId));
-      setProduct(foundProduct);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        
+        console.log('Cargando producto ID:', productId);
+        const response = await productService.getProductById(productId);
+        console.log('Producto cargado desde API:', response);
+        
+        if (response.product) {
+          setProduct(response.product);
+        } else {
+          throw new Error('Producto no encontrado');
+        }
+      } catch (err) {
+        console.error('Error cargando producto:', err);
+        setError('Error al cargar el producto. Por favor, intenta nuevamente.');
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    loadProduct();
+    if (productId) {
+      loadProduct();
+    }
   }, [productId]);
 
   const handleAddToCart = () => {
@@ -87,11 +52,16 @@ const ProductDetailPage = () => {
       return;
     }
 
+    if (!product.in_stock) {
+      alert('Este producto está agotado');
+      return;
+    }
+
     const cartItem = {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.images[0],
+      image: product.images && product.images.length > 0 ? product.images[0] : '',
       size: selectedSize,
       quantity: quantity
     };
@@ -105,6 +75,10 @@ const ProductDetailPage = () => {
     navigate('/cart');
   };
 
+  const handleRetry = () => {
+    window.location.reload();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f7f2e7] flex justify-center items-center">
@@ -116,12 +90,39 @@ const ProductDetailPage = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#f7f2e7] flex justify-center items-center">
+        <div className="text-center max-w-md mx-4">
+          <div className="text-6xl mb-4 text-[#779385]">⚠️</div>
+          <h2 className="text-2xl font-serif font-bold text-[#2f4823] mb-4">Error al cargar</h2>
+          <p className="text-[#779385] mb-6">{error}</p>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={handleRetry}
+              className="bg-[#2f4823] text-white px-6 py-3 rounded-lg hover:bg-[#1f3219] transition-colors"
+            >
+              Reintentar
+            </button>
+            <button 
+              onClick={() => navigate('/shop-page')}
+              className="bg-[#779385] text-white px-6 py-3 rounded-lg hover:bg-[#5a7568] transition-colors"
+            >
+              Volver a la Tienda
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div className="min-h-screen bg-[#f7f2e7] flex justify-center items-center">
         <div className="text-center">
           <div className="text-6xl mb-4 text-[#779385]">🙏</div>
           <h2 className="text-2xl font-serif font-bold text-[#2f4823] mb-4">Prenda no encontrada</h2>
+          <p className="text-[#779385] mb-6">La prenda que buscas no existe o fue removida.</p>
           <button 
             onClick={() => navigate('/shop-page')}
             className="bg-[#2f4823] text-white px-6 py-3 rounded-lg hover:bg-[#1f3219] transition-colors"
@@ -143,7 +144,7 @@ const ProductDetailPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12">
           <ProductImageGallery 
-            images={product.images}
+            images={product.images || []}
             name={product.name}
             selectedImage={selectedImage}
             onImageSelect={setSelectedImage}
@@ -164,7 +165,7 @@ const ProductDetailPage = () => {
 
         <RelatedProducts 
           currentProduct={product}
-          allProducts={sampleProducts}
+          allProducts={[]} // Por ahora vacío, luego podemos cargar productos relacionados
         />
       </div>
     </div>
