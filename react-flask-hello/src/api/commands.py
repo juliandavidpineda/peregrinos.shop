@@ -1,6 +1,6 @@
-
 import click
-from api.models import db, User
+from api.models import db, User, AdminUser
+from flask.cli import with_appcontext
 
 """
 In this file, you can add as many commands as you want using the @app.cli.command decorator
@@ -32,3 +32,56 @@ def setup_commands(app):
     @app.cli.command("insert-test-data")
     def insert_test_data():
         pass
+
+    # =============================================================================
+    # COMANDOS PARA PEREGRINOS.SHOP - NUEVOS COMANDOS AGREGADOS
+    # =============================================================================
+
+    @app.cli.command("create-admin")
+    @with_appcontext
+    def create_admin():
+        """Crear usuario admin por defecto para Peregrinos.shop"""
+        
+        # Verificar si ya existe
+        if AdminUser.query.filter_by(email='admin@peregrinos.shop').first():
+            click.echo('❌ Admin user already exists')
+            return
+        
+        admin = AdminUser(
+            email='admin@peregrinos.shop',
+            first_name='Admin',
+            last_name='Peregrinos',
+            role='superadmin'
+        )
+        admin.set_password('admin123')
+        
+        db.session.add(admin)
+        db.session.commit()
+        click.echo('✅ Superadmin creado exitosamente!')
+        click.echo('📧 Email: admin@peregrinos.shop')
+        click.echo('🔑 Password: admin123')
+        click.echo('⚠️  IMPORTANTE: Cambia la contraseña después del primer login!')
+
+    @app.cli.command("insert-test-products")
+    @with_appcontext
+    def insert_test_products():
+        """Insertar productos de prueba para Peregrinos.shop"""
+        from api.models import Category, Product
+        
+        # Crear categorías de ejemplo
+        categories_data = [
+            {"name": "Camisetas", "description": "Camisetas con mensajes espirituales"},
+            {"name": "Sudaderas", "description": "Sudaderas cómodas para el día a día"},
+            {"name": "Accesorios", "description": "Accesorios y detalles especiales"},
+        ]
+        
+        for cat_data in categories_data:
+            if not Category.query.filter_by(name=cat_data["name"]).first():
+                category = Category(**cat_data)
+                db.session.add(category)
+        
+        db.session.commit()
+        click.echo('✅ Categorías de prueba creadas')
+        
+        # Aquí podríamos agregar productos de prueba después
+        click.echo('📦 Ejecuta "flask insert-test-products-full" para agregar productos completos')

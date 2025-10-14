@@ -1,4 +1,8 @@
-from flask import jsonify, url_for
+from flask import jsonify, url_for, request
+from functools import wraps
+import jwt
+import datetime
+import os
 
 class APIException(Exception):
     status_code = 400
@@ -33,9 +37,86 @@ def generate_sitemap(app):
     links_html = "".join(["<li><a href='" + y + "'>" + y + "</a></li>" for y in links])
     return """
         <div style="text-align: center;">
-        <img style="max-height: 80px" src='https://storage.googleapis.com/breathecode/boilerplates/rigo-baby.jpeg' />
+        <img style="max-height: 80px" src='https://storage.googleapis.com/breathecode/rigo-baby.jpeg' />
         <h1>Rigo welcomes you to your API!!</h1>
         <p>API HOST: <script>document.write('<input style="padding: 5px; width: 300px" type="text" value="'+window.location.href+'" />');</script></p>
         <p>Start working on your project by following the <a href="https://start.4geeksacademy.com/starters/full-stack" target="_blank">Quick Start</a></p>
         <p>Remember to specify a real endpoint path like: </p>
         <ul style="text-align: left;">"""+links_html+"</ul></div>"
+
+# =============================================================================
+# AUTHENTICATION UTILITIES - NUEVAS FUNCIONES AGREGADAS
+# =============================================================================
+
+def generate_token(user_id, role):
+    """
+    Genera un token JWT para el usuario
+    """
+    try:
+        payload = {
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=1),
+            'iat': datetime.datetime.utcnow(),
+            'sub': user_id,
+            'role': role
+        }
+        return jwt.encode(
+            payload,
+            os.getenv('FLASK_APP_KEY'),
+            algorithm='HS256'
+        )
+    except Exception as e:
+        return e
+
+def token_required(f):
+    """
+    Decorator para verificar token JWT
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+        
+        try:
+            # Remover 'Bearer ' del token
+            if token.startswith('Bearer '):
+                token = token[7:]
+            
+            data = jwt.decode(token, os.getenv('FLASK_APP_KEY'), algorithms=['HS256'])
+            current_user_id = data['sub']
+            current_user_role = data['role']
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Token is invalid'}), 401
+        
+        return f(current_user_id, current_user_role, *args, **kwargs)
+    
+    return decorated
+
+def admin_required(f):
+    """
+    Decorator para verificar que el usuario es admin
+    """
+    @wraps(f)
+    @token_required
+    def decorated(current_user_id, current_user_role, *args, **kwargs):
+        if current_user_role not in ['superadmin', 'editor', 'content_manager']:
+            return jsonify({'message': 'Admin access required'}), 403
+        return f(current_user_id, current_user_role, *args, **kwargs)
+    
+    return decorated
+
+def superadmin_required(f):
+    """
+    Decorator para verificar que el usuario es superadmin
+    """
+    @wraps(f)
+    @token_required
+    def decorated(current_user_id, current_user_role, *args, **kwargs):
+        if current_user_role != 'superadmin':
+            return jsonify({'message': 'Superadmin access required'}), 403
+        return f(current_user_id, current_user_role, *args, **kwargs)
+    
+    return decorated
