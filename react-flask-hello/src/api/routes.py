@@ -7,6 +7,7 @@ from api.utils import generate_sitemap, APIException, generate_token, token_requ
 from flask_cors import CORS
 import datetime
 from api.models import OrderStatusEnum
+from sqlalchemy import func, desc, or_
 
 api = Blueprint('api', __name__)
 
@@ -268,6 +269,71 @@ def delete_product(current_user_id, current_user_role, product_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
     
+@api.route('/products/top-selling', methods=['GET'])
+def get_top_selling_products():
+    """Obtiene los productos más vendidos o productos destacados"""
+    try:
+        limit = request.args.get('limit', 4, type=int)
+        
+        # Intentar obtener productos más vendidos
+        top_products_query = db.session.query(
+            Product,
+            func.coalesce(func.sum(OrderItem.quantity), 0).label('total_sold')
+        ).outerjoin(OrderItem, Product.id == OrderItem.product_id)\
+         .outerjoin(Order, OrderItem.order_id == Order.id)\
+         .group_by(Product.id)\
+         .order_by(desc('total_sold'), desc(Product.id))\
+         .limit(limit)\
+         .all()
+        
+        # Si no hay productos con ventas, traer productos normales
+        if not top_products_query or all(sold == 0 for _, sold in top_products_query):
+            # Traer los últimos productos creados
+            products = Product.query.order_by(desc(Product.id)).limit(limit).all()
+            products_list = []
+            for product in products:
+                products_list.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'description': product.description,
+                    'price': float(product.price),
+                    'images': product.images if product.images else [],
+                    'sizes': product.sizes if product.sizes else ['S', 'M', 'L', 'XL'],
+                    'stock': product.stock if hasattr(product, 'stock') else 0,
+                    'category_id': product.category_id if hasattr(product, 'category_id') else None,
+                    'total_sold': 0
+                })
+        else:
+            # Formatear productos con ventas
+            products_list = []
+            for product, total_sold in top_products_query:
+                products_list.append({
+                    'id': product.id,
+                    'name': product.name,
+                    'description': product.description,
+                    'price': float(product.price),
+                    'images': product.images if product.images else [],
+                    'sizes': product.sizes if product.sizes else ['S', 'M', 'L', 'XL'],
+                    'stock': product.stock if hasattr(product, 'stock') else 0,
+                    'category_id': product.category_id if hasattr(product, 'category_id') else None,
+                    'total_sold': int(total_sold)
+                })
+        
+        return jsonify({
+            'success': True,
+            'products': products_list
+        }), 200
+        
+    except Exception as e:
+        print(f"Error getting top selling products: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'message': 'Error al obtener productos más vendidos',
+            'error': str(e)
+        }), 500
 # =============================================================================
 # CATEGORY ENDPOINTS
 # =============================================================================

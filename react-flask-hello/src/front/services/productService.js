@@ -1,6 +1,13 @@
 import { apiService } from './api';
 
 export const productService = {
+
+  // ← NUEVO MÉTODO - Obtener productos más vendidos
+  async getTopSellingProducts(limit = 4) {
+    const endpoint = `/api/products/top-selling?limit=${limit}`;
+    return apiService.request(endpoint);
+  },
+  
   // Obtener todos los productos
   async getProducts(filters = {}) {
     const queryParams = new URLSearchParams();
