@@ -30,29 +30,18 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching dashboard data...');
-      
       // Fetch data in parallel
       const [productsRes, categoriesRes, ordersRes] = await Promise.all([
         productService.getProducts().catch(err => {
-          console.error('Error fetching products:', err);
           return { products: [] };
         }),
         categoryService.getCategories().catch(err => {
-          console.error('Error fetching categories:', err);
           return { categories: [] };
         }),
         orderService.getAllOrders(localStorage.getItem('admin_token')).catch(err => {
-          console.error('Error fetching orders:', err);
           return { orders: [] };
         })
       ]);
-
-      console.log('📊 Data received:', {
-        products: productsRes.products?.length || 0,
-        categories: categoriesRes.categories?.length || 0,
-        orders: ordersRes.orders?.length || 0
-      });
 
       const products = productsRes.products || [];
       const categories = categoriesRes.categories || [];
@@ -99,16 +88,7 @@ const AdminDashboard = () => {
         recentActivity
       });
 
-      console.log('✅ Dashboard stats calculated:', {
-        products: products.length,
-        categories: categories.length,
-        todayOrders: todayOrders.length,
-        monthlyRevenue,
-        recentOrders: recentOrders.length
-      });
-
     } catch (error) {
-      console.error('❌ Error fetching dashboard data:', error);
       setError('Error al cargar los datos del dashboard');
     } finally {
       setLoading(false);
