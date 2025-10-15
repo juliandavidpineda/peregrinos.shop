@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { orderService } from '../services/orderService';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -30,17 +31,38 @@ const CheckoutPage = () => {
   const shipping = 10000;
   const total = subtotal + shipping;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsProcessing(true);
 
-    // Simular procesamiento de pago
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  try {
+    // Preparar datos para la API
+    const orderData = {
+      customer_info: formData,
+      items: cartItems,
+      subtotal: subtotal,
+      shipping: shipping,
+      total: total
+    };
+
+    console.log('Enviando orden:', orderData); // Debug
+
+    // Llamar al servicio para crear la orden
+    const result = await orderService.createOrder(orderData);
+    
+    console.log('Orden creada:', result); // Debug
     
     // Limpiar carrito y redirigir a confirmación
     clearCart();
-    navigate('/order-confirmation');
-  };
+    navigate(`/order-confirmation?order_id=${result.order_id}`);
+    
+  } catch (error) {
+    console.error('Error creating order:', error);
+    alert(`Error al procesar el pedido: ${error.message}. Por favor intenta nuevamente.`);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleInputChange = (e) => {
     setFormData({

@@ -6,6 +6,7 @@ from api.models import db, User, AdminUser, Product, Category, Order, OrderItem,
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
 import datetime
+from api.models import OrderStatusEnum
 
 api = Blueprint('api', __name__)
 
@@ -311,6 +312,138 @@ def create_category(current_user_id, current_user_role):
             'message': 'Category created successfully',
             'category': category.serialize()
         }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+    
+
+    # =============================================================================
+# ORDER ENDPOINTS -
+# =============================================================================
+
+@api.route('/orders', methods=['POST'])
+def create_order():
+    """Crear una nueva orden desde el checkout"""
+    try:
+        data = request.get_json()
+        
+        print("Datos recibidos para orden:", data)  # Debug
+        
+        # Validar datos requeridos
+        required_fields = ['customer_info', 'items']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'message': f'Missing required field: {field}'}), 400
+        
+        customer_info = data['customer_info']
+        items = data['items']
+        
+        # Validar campos del cliente
+        if not all([customer_info.get('nombre'), customer_info.get('email'), customer_info.get('telefono')]):
+            return jsonify({'message': 'Missing required customer information'}), 400
+        
+        # Calcular totales
+        subtotal = sum(item['price'] * item['quantity'] for item in items)
+        shipping = 10000  # Envío fijo
+        total = subtotal + shipping
+        
+        # Crear la orden
+        order = Order(
+            customer_name=customer_info['nombre'],
+            customer_email=customer_info['email'],
+            customer_phone=customer_info['telefono'],
+            customer_address=customer_info.get('direccion', ''),
+            customer_city=customer_info.get('ciudad', ''),
+            customer_department=customer_info.get('departamento', ''),
+            customer_postal_code=customer_info.get('codigoPostal', ''),
+            subtotal=subtotal,
+            shipping=shipping,
+            total=total,
+            status=OrderStatusEnum.PENDING
+        )
+        
+        db.session.add(order)
+        db.session.flush()  # Para obtener el ID de la orden
+        
+        # Crear items de la orden
+        for item_data in items:
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=item_data['productId'],
+                quantity=item_data['quantity'],
+                size=item_data['size'],
+                price=item_data['price']
+            )
+            db.session.add(order_item)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Order created successfully',
+            'order': order.serialize(),
+            'order_id': order.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print("Error creating order:", str(e))  # Debug
+        return jsonify({'message': f'Error creating order: {str(e)}'}), 400
+
+@api.route('/orders/<order_id>', methods=['GET'])
+def get_order(order_id):
+    """Obtener detalles de una orden específica"""
+    try:
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({'message': 'Order not found'}), 404
+        
+        return jsonify({
+            'order': order.serialize()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
+@api.route('/orders', methods=['GET'])
+@admin_required
+def get_all_orders(current_user_id, current_user_role):
+    """Obtener todas las órdenes (solo admin)"""
+    try:
+        orders = Order.query.order_by(Order.created_at.desc()).all()
+        
+        return jsonify({
+            'orders': [order.serialize() for order in orders],
+            'total': len(orders)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
+@api.route('/orders/<order_id>/status', methods=['PUT'])
+@admin_required
+def update_order_status(current_user_id, current_user_role, order_id):
+    """Actualizar estado de una orden (solo admin)"""
+    try:
+        order = Order.query.get(order_id)
+        if not order:
+            return jsonify({'message': 'Order not found'}), 404
+        
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        # Validar estado
+        valid_statuses = [status.value for status in OrderStatusEnum]
+        if new_status not in valid_statuses:
+            return jsonify({'message': f'Invalid status. Must be one of: {valid_statuses}'}), 400
+        
+        order.status = OrderStatusEnum(new_status)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Order status updated successfully',
+            'order': order.serialize()
+        }), 200
         
     except Exception as e:
         db.session.rollback()
