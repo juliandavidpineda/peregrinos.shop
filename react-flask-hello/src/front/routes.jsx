@@ -23,7 +23,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminCategories from "./pages/admin/AdminCategories";
-import AdminOrders from "./pages/admin/AdminOrders";
+import AdminOrders from "./pages/admin/AdminOrders/AdminOrders";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter(
