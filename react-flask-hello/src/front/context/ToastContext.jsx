@@ -30,8 +30,8 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={{ addToast }}>
       {children}
       
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 space-y-2">
+      {/* Toast Container - Updated to bottom-center */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 space-y-2 min-w-[300px] max-w-md">
         {toasts.map((toast) => (
           <div
             key={toast.id}
@@ -41,7 +41,7 @@ export const ToastProvider = ({ children }) => {
                 : toast.type === 'error'
                 ? 'bg-red-50 border-red-500 text-red-800'
                 : 'bg-blue-50 border-blue-500 text-blue-800'
-            } ${toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}
+            } ${toast.visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
           >
             <div className="flex items-center gap-3">
               <span className="text-lg">

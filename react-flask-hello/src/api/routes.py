@@ -9,6 +9,11 @@ import datetime
 from api.models import OrderStatusEnum
 from sqlalchemy import func, desc, or_
 
+import os
+import uuid
+from werkzeug.utils import secure_filename
+from flask import current_app
+
 api = Blueprint('api', __name__)
 
 # Allow CORS requests to this API
@@ -392,7 +397,7 @@ def create_category(current_user_id, current_user_role):
         return jsonify({'message': str(e)}), 400
     
 
-    # =============================================================================
+# =============================================================================
 # ORDER ENDPOINTS -
 # =============================================================================
 
@@ -522,3 +527,282 @@ def update_order_status(current_user_id, current_user_role, order_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
+    
+# =============================================================================
+# CONTENIDO MULTIMEDIA PARA PRODUCTOS -
+# =============================================================================   
+
+# Configuración de archivos permitidos
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'webm'}
+MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
+
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def save_uploaded_file(file, folder):
+    if file and allowed_file(file.filename, ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS):
+        # Generar nombre único
+        file_ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4()}.{file_ext}"
+        
+        # Crear directorio si no existe
+        upload_dir = os.path.join(current_app.root_path, 'uploads', folder)
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Guardar archivo
+        file_path = os.path.join(upload_dir, unique_filename)
+        file.save(file_path)
+        
+        return f"/uploads/{folder}/{unique_filename}"
+    return None
+
+# Endpoint para subir archivos multimedia
+@api.route('/admin/upload/<product_id>', methods=['POST'])
+@admin_required
+def upload_media(current_user_id, current_user_role, product_id):
+    """Subir imágenes o videos para un producto"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Producto no encontrado'}), 404
+        
+        if 'files' not in request.files:
+            return jsonify({'message': 'No se enviaron archivos'}), 400
+        
+        files = request.files.getlist('files')
+        uploaded_files = []
+        
+        for file in files:
+            if file.filename == '':
+                continue
+                
+            # Verificar tamaño
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+            
+            if file_size > MAX_FILE_SIZE:
+                continue
+            
+            # Determinar tipo de archivo y carpeta
+            if allowed_file(file.filename, ALLOWED_IMAGE_EXTENSIONS):
+                folder = 'images'
+                media_field = 'images'
+            elif allowed_file(file.filename, ALLOWED_VIDEO_EXTENSIONS):
+                folder = 'videos' 
+                media_field = 'videos'
+            else:
+                continue
+            
+            # Guardar archivo
+            file_path = save_uploaded_file(file, folder)
+            if file_path:
+                # Agregar a la lista correspondiente del producto
+                current_media = getattr(product, media_field, []) or []
+                current_media.append(file_path)
+                setattr(product, media_field, current_media)
+                uploaded_files.append(file_path)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Se subieron {len(uploaded_files)} archivos',
+            'uploaded_files': uploaded_files,
+            'product': product.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# Endpoint para eliminar archivo multimedia
+@api.route('/admin/upload/<product_id>', methods=['DELETE'])
+@admin_required
+def delete_media(current_user_id, current_user_role, product_id):
+    """Eliminar una imagen o video de un producto"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Producto no encontrado'}), 404
+        
+        data = request.get_json()
+        file_path = data.get('file_path')
+        file_type = data.get('type')  # 'image' o 'video'
+        
+        if not file_path or not file_type:
+            return jsonify({'message': 'Ruta de archivo y tipo requeridos'}), 400
+        
+        # Determinar campo a actualizar
+        media_field = 'images' if file_type == 'image' else 'videos'
+        current_media = getattr(product, media_field, []) or []
+        
+        # Remover de la lista
+        if file_path in current_media:
+            current_media.remove(file_path)
+            setattr(product, media_field, current_media)
+            
+            # Opcional: Eliminar archivo físico del servidor
+            try:
+                physical_path = os.path.join(current_app.root_path, file_path.lstrip('/'))
+                if os.path.exists(physical_path):
+                    os.remove(physical_path)
+            except Exception as e:
+                print(f"Error eliminando archivo físico: {e}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Archivo eliminado correctamente',
+            'product': product.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# Endpoint para reordenar archivos multimedia
+@api.route('/admin/upload/<product_id>/reorder', methods=['PUT'])
+@admin_required
+def reorder_media(current_user_id, current_user_role, product_id):
+    """Reordenar imágenes o videos de un producto"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Producto no encontrado'}), 404
+        
+        data = request.get_json()
+        media_type = data.get('type')  # 'images' o 'videos'
+        new_order = data.get('order', [])
+        
+        if media_type not in ['images', 'videos']:
+            return jsonify({'message': 'Tipo debe ser "images" o "videos"'}), 400
+        
+        setattr(product, media_type, new_order)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Orden actualizado correctamente',
+            'product': product.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+    
+# =============================================================================
+# CREAR RESEÑAS ENDPOINTS -
+# =============================================================================
+
+# Endpoint para crear reseña
+@api.route('/products/<product_id>/reviews', methods=['POST'])
+def create_review(product_id):
+    """Crear una nueva reseña para un producto"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return jsonify({'message': 'Producto no encontrado'}), 404
+        
+        data = request.get_json()
+        
+        review = Review(
+            product_id=product_id,
+            customer_name=data.get('customer_name'),
+            customer_email=data.get('customer_email'),
+            rating=data.get('rating'),
+            title=data.get('title'),
+            comment=data.get('comment'),
+            user_id=data.get('user_id')  # Opcional si el usuario está logueado
+        )
+        
+        db.session.add(review)
+        db.session.commit()
+        
+        # Actualizar rating promedio del producto
+        update_product_rating(product_id)
+        
+        return jsonify({
+            'message': 'Reseña creada correctamente',
+            'review': review.serialize()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# Endpoint para obtener reseñas de un producto
+@api.route('/products/<product_id>/reviews', methods=['GET'])
+def get_product_reviews(product_id):
+    """Obtener reseñas de un producto (solo las aprobadas)"""
+    try:
+        reviews = Review.query.filter_by(
+            product_id=product_id, 
+            is_approved=True
+        ).order_by(Review.created_at.desc()).all()
+        
+        return jsonify({
+            'reviews': [review.serialize() for review in reviews],
+            'total': len(reviews)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
+# Endpoint para moderar reseñas (admin)
+@api.route('/admin/reviews/<review_id>', methods=['PUT'])
+@admin_required
+def moderate_review(current_user_id, current_user_role, review_id):
+    """Aprobar/rechazar reseña (solo admin)"""
+    try:
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({'message': 'Reseña no encontrada'}), 404
+        
+        data = request.get_json()
+        review.is_approved = data.get('is_approved', False)
+        
+        db.session.commit()
+        
+        # Actualizar rating del producto si se aprueba
+        if review.is_approved:
+            update_product_rating(review.product_id)
+        
+        return jsonify({
+            'message': 'Reseña actualizada correctamente',
+            'review': review.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# Función helper para actualizar rating del producto
+def update_product_rating(product_id):
+    """Calcular y actualizar el rating promedio de un producto"""
+    try:
+        product = Product.query.get(product_id)
+        if not product:
+            return
+        
+        # Calcular promedio solo de reseñas aprobadas
+        approved_reviews = Review.query.filter_by(
+            product_id=product_id, 
+            is_approved=True
+        ).all()
+        
+        if approved_reviews:
+            total_rating = sum(review.rating for review in approved_reviews)
+            average_rating = total_rating / len(approved_reviews)
+            
+            product.rating = round(average_rating, 1)
+            product.review_count = len(approved_reviews)
+        else:
+            product.rating = 0.0
+            product.review_count = 0
+        
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error actualizando rating: {e}")

@@ -144,6 +144,17 @@ class Product(db.Model):
     review_count: Mapped[int] = mapped_column(Integer, default=0)
     is_new: Mapped[bool] = mapped_column(Boolean, default=False)
     is_on_sale: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # CAMPOS MULTIMEDIA
+    images: Mapped[list] = mapped_column(JSON, nullable=True)  # ["/uploads/images/camiseta1.jpg"]
+    videos: Mapped[list] = mapped_column(JSON, nullable=True)  # ["/uploads/videos/demo-producto.mp4"]
+
+    # NUEVOS CAMPOS DE DETALLES
+    material: Mapped[str] = mapped_column(String(200), nullable=True)
+    cuidados: Mapped[str] = mapped_column(Text, nullable=True)
+    origen: Mapped[str] = mapped_column(String(100), nullable=True)
+    disponibilidad: Mapped[str] = mapped_column(String(100), nullable=True)
+    costo_prenda: Mapped[float] = mapped_column(Float, nullable=True)
     
     # Fechas
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
@@ -152,6 +163,7 @@ class Product(db.Model):
     # Relaciones
     category_rel: Mapped["Category"] = relationship("Category", back_populates="products")
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="product")
 
     def __repr__(self):
         return f'<Product {self.name}>'
@@ -175,7 +187,14 @@ class Product(db.Model):
             'review_count': self.review_count,
             'is_new': self.is_new,
             'is_on_sale': self.is_on_sale,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'images': self.images or [],
+            'videos': self.videos or [],
+            'material': self.material,
+            'cuidados': self.cuidados,
+            'origen': self.origen,
+            'disponibilidad': self.disponibilidad,
+            'costo_prenda': self.costo_prenda
         }
 
 class Order(db.Model):
@@ -350,6 +369,49 @@ class ContactLead(db.Model):
             'phone': self.phone,
             'message': self.message,
             'status': self.status.value,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+class Review(db.Model):
+    __tablename__ = 'reviews'
+    
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    
+    # Foreign Keys
+    product_id: Mapped[str] = mapped_column(String(36), ForeignKey('products.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=True)  # Opcional si es usuario registrado
+    
+    # Datos de la reseña
+    customer_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    customer_email: Mapped[str] = mapped_column(String(120), nullable=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5 estrellas
+    title: Mapped[str] = mapped_column(String(200), nullable=True)
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    is_approved: Mapped[bool] = mapped_column(Boolean, default=False)  # Para moderación
+    
+    # Fechas
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relaciones
+    product: Mapped["Product"] = relationship("Product")
+    user: Mapped["User"] = relationship("User")
+
+    def __repr__(self):
+        return f'<Review {self.rating} stars for {self.product_id}>'
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'product_id': self.product_id,
+            'user_id': self.user_id,
+            'customer_name': self.customer_name,
+            'customer_email': self.customer_email,
+            'rating': self.rating,
+            'title': self.title,
+            'comment': self.comment,
+            'is_approved': self.is_approved,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

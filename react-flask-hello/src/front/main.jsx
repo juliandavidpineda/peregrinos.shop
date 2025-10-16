@@ -29,7 +29,7 @@ const Main = () => {
                         
                         {/* Toast notifications container - debe estar dentro de los providers pero fuera del RouterProvider */}
                         <Toaster 
-                            position="top-right"
+                            position="bottom-center"
                             toastOptions={{
                                 duration: 3000,
                                 style: {
