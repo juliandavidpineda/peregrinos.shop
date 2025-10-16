@@ -52,18 +52,7 @@ const ProductGrid = ({
       {products.map(product => (
         <ProductCard
           key={product.id}
-          id={product.id}
-          name={product.name}
-          price={product.price}
-          originalPrice={product.originalPrice}
-          image={product.image}
-          category={product.category}
-          subcategory={product.subcategory}
-          rating={product.rating}
-          reviewCount={product.reviewCount}
-          isNew={product.isNew}
-          isOnSale={product.isOnSale}
-          features={product.features}
+          product={product} 
           onProductClick={() => handleProductClick(product.id)}
         />
       ))}

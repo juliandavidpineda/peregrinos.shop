@@ -3,15 +3,14 @@ import React from 'react';
 const MobileFiltersModal = ({ 
   isOpen, 
   onClose, 
-  categories = [],
-  products = [],
-  selectedCategories = [],
-  onCategoryChange,
-  priceRange,
-  onPriceRangeChange 
+  categories = [], 
+  selectedCategories = [], 
+  onCategoryChange, 
+  priceRange, 
+  onPriceRangeChange,
+  onClearFilters 
 }) => {
-  if (!isOpen) return null;
-
+  
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -20,123 +19,114 @@ const MobileFiltersModal = ({
     }).format(price);
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
       {/* Overlay */}
       <div 
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black bg-opacity-50"
         onClick={onClose}
       />
       
-      {/* Panel lateral */}
-      <div className="absolute right-0 top-0 h-full w-80 bg-[#f7f2e7] shadow-xl overflow-y-auto">
-        
-        {/* Header */}
-        <div className="bg-[#2f4823] text-white p-4 flex justify-between items-center">
-          <h3 className="font-serif font-semibold text-lg">Filtros</h3>
-          <button 
-            onClick={onClose}
-            className="text-white hover:text-[#779385] transition-colors text-xl"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Contenido */}
-        <div className="p-4 space-y-6">
+      {/* Modal */}
+      <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-lg overflow-y-auto">
+        <div className="p-6">
           
-          {/* Categorías */}
-          <div>
-            <h4 className="font-semibold text-[#2f4823] mb-3 flex items-center gap-2">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#779385]/20">
+            <h2 className="font-serif font-bold text-[#2f4823] text-xl">Filtros</h2>
+            <button 
+              onClick={onClose}
+              className="text-[#779385] hover:text-[#2f4823] text-2xl"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Filtro por categorías - ACTUALIZADO */}
+          <div className="mb-8">
+            <h3 className="font-semibold text-[#2f4823] mb-4 flex items-center gap-2">
               <span className="text-[#779385]">●</span>
               Categorías
-            </h4>
+            </h3>
             <div className="space-y-3">
               {categories.map(category => (
-                <label key={category.name} className="flex items-center justify-between group cursor-pointer">
+                <label key={category.id} className="flex items-center justify-between group cursor-pointer">
                   <div className="flex items-center space-x-3">
                     <input
                       type="checkbox"
-                      checked={selectedCategories.includes(category.name)}
-                      onChange={() => onCategoryChange(category.name)}
-                      className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823]"
+                      checked={selectedCategories.includes(category.id)}
+                      onChange={() => onCategoryChange(category.id)}
+                      className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823] focus:ring-2"
                     />
                     <span className="text-[#2f4823] group-hover:text-[#1f3219] transition-colors">
                       {category.name}
                     </span>
                   </div>
-                  <span className="text-sm text-[#779385] bg-white px-2 py-1 rounded-full">
+                  <span className="text-sm text-[#779385] bg-[#f7f2e7] px-2 py-1 rounded-full">
                     {category.count}
                   </span>
                 </label>
               ))}
+              
+              {categories.length === 0 && (
+                <p className="text-sm text-[#779385] italic">
+                  No hay categorías disponibles
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Tipo de Prenda */}
-          <div>
-            <h4 className="font-semibold text-[#2f4823] mb-3 flex items-center gap-2">
-              <span className="text-[#779385]">●</span>
-              Tipo de Prenda
-            </h4>
-            <div className="space-y-3">
-              {products.map(product => (
-                <label key={product.name} className="flex items-center justify-between group cursor-pointer">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823]"
-                    />
-                    <span className="text-[#2f4823] text-sm group-hover:text-[#1f3219] transition-colors">
-                      {product.name}
-                    </span>
-                  </div>
-                  <span className="text-sm text-[#779385] bg-white px-2 py-1 rounded-full">
-                    {product.count}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Precio */}
-          <div>
-            <h4 className="font-semibold text-[#2f4823] mb-3 flex items-center gap-2">
+          {/* Filtro por precio */}
+          <div className="mb-6">
+            <h3 className="font-semibold text-[#2f4823] mb-4 flex items-center gap-2">
               <span className="text-[#779385]">●</span>
               Rango de Precio
-            </h4>
+            </h3>
             <input
               type="range"
-              min="120000"
+              min="0"
               max="300000"
               step="10000"
               value={priceRange}
               onChange={onPriceRangeChange}
-              className="w-full h-2 bg-[#779385]/30 rounded-lg appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#2f4823]"
+              className="w-full h-2 bg-[#779385]/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#2f4823]"
             />
-            <div className="flex justify-between items-center mt-3">
-              <span className="text-sm text-[#779385]">{formatPrice(120000)}</span>
-              <span className="font-semibold text-[#2f4823] bg-white px-3 py-1 rounded-full text-sm">
+            <div className="flex justify-between items-center mt-4">
+              <span className="text-sm text-[#779385]">{formatPrice(0)}</span>
+              <span className="font-semibold text-[#2f4823] bg-[#f7f2e7] px-3 py-1 rounded-full text-sm">
                 Hasta {formatPrice(priceRange)}
               </span>
               <span className="text-sm text-[#779385]">{formatPrice(300000)}</span>
             </div>
           </div>
 
-          {/* Botón aplicar */}
-          <button 
-            onClick={onClose}
-            className="w-full bg-[#2f4823] text-white py-3 rounded-lg font-semibold hover:bg-[#1f3219] transition-colors"
-          >
-            Aplicar Filtros
-          </button>
+          {/* Botones de acción */}
+          <div className="space-y-3">
+            {(selectedCategories.length > 0 || priceRange < 300000) && (
+              <button 
+                className="w-full py-3 px-4 border border-[#779385] text-[#779385] rounded-lg hover:bg-[#f7f2e7] transition-colors font-medium"
+                onClick={onClearFilters}
+              >
+                Limpiar Filtros
+              </button>
+            )}
+            
+            <button 
+              className="w-full py-3 px-4 bg-[#2f4823] text-white rounded-lg hover:bg-[#1f3219] transition-colors font-medium"
+              onClick={onClose}
+            >
+              Aplicar Filtros
+            </button>
+          </div>
 
           {/* Mensaje espiritual */}
-          <div className="p-4 bg-white rounded-lg border border-[#779385]/10">
+          <div className="mt-8 p-4 bg-[#f7f2e7] rounded-lg border border-[#779385]/10">
             <p className="text-sm text-[#2f4823] text-center italic">
-              "Vístanse de amor"
+              "Que todo lo que hagas, lo hagas con amor"
             </p>
-            <p className="text-xs text-[#779385] text-center mt-1">Colosenses 3:14</p>
+            <p className="text-xs text-[#779385] text-center mt-1">1 Corintios 16:14</p>
           </div>
         </div>
       </div>

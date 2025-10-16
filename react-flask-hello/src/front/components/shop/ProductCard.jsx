@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
 
 const ProductCard = ({ 
-  id,
-  name, 
-  price, 
-  original_price, // Cambiado de originalPrice
-  images = [], // Cambiado de image (ahora es array)
-  category, 
-  subcategory,
-  rating = 0, 
-  review_count = 0, // Cambiado de reviewCount
-  is_new = false, // Cambiado de isNew
-  is_on_sale = false, // Cambiado de isOnSale
-  features = [],
-  in_stock = true, // Nuevo campo
-  onProductClick
+  product, // ✅ Recibir el producto completo como objeto
+  onProductClick 
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  // Desestructurar con valores por defecto
+  const {
+    id,
+    name, 
+    price, 
+    original_price, 
+    images = [], 
+    category, 
+    subcategory,
+    rating = 0, 
+    review_count = 0,
+    is_new = false,
+    is_on_sale = false,
+    features = [],
+    in_stock = true
+  } = product || {};
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
@@ -26,10 +31,25 @@ const ProductCard = ({
     }).format(price);
   };
 
-  // Usar la primera imagen del array, o imagen por defecto
-  const mainImage = images && images.length > 0 
-    ? images[0] 
-    : 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
+  // Función mejorada para obtener imagen
+  const getMainImage = () => {
+    console.log('🖼️ ProductCard - Imágenes para:', name, images);
+    
+    // Verificar si hay imágenes válidas
+    if (images && 
+        Array.isArray(images) && 
+        images.length > 0 && 
+        images[0] && 
+        images[0].trim() !== '') {
+      return images[0];
+    }
+    
+    // Imagen por defecto
+    return 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
+  };
+
+  const mainImage = getMainImage();
+  const hasRealImage = mainImage !== 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
 
   const discountPercentage = is_on_sale && original_price 
     ? Math.round(((original_price - price) / original_price) * 100) 
@@ -51,12 +71,18 @@ const ProductCard = ({
     );
   };
 
+  const handleCardClick = () => {
+    if (in_stock && onProductClick) {
+      onProductClick(id);
+    }
+  };
+
   return (
     <div 
       className={`bg-white rounded-lg shadow-sm border overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-md group ${
         in_stock ? 'border-[#779385]/20 hover:border-[#779385]/40' : 'border-red-200 opacity-70'
       }`}
-      onClick={() => in_stock && onProductClick()}
+      onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -67,7 +93,18 @@ const ProductCard = ({
           className={`w-full h-full object-cover transition-transform duration-500 ${
             isHovered ? 'scale-105' : 'scale-100'
           } ${!in_stock ? 'grayscale' : ''}`}
+          onError={(e) => {
+            console.log('❌ Error cargando imagen para:', name);
+            e.target.src = 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
+          }}
         />
+        
+        {/* Badge para imágenes por defecto */}
+        {!hasRealImage && (
+          <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full z-10">
+            Sin imagen
+          </div>
+        )}
         
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">
@@ -89,19 +126,21 @@ const ProductCard = ({
         </div>
 
         {/* Category badge */}
-        <div className="absolute top-3 right-3">
-          <span className="bg-white/90 backdrop-blur-sm text-[#2f4823] px-2 py-1 rounded text-xs font-semibold border border-[#779385]/20">
-            {category}
-          </span>
-        </div>
+        {category && (
+          <div className="absolute top-3 right-3">
+            <span className="bg-white/90 backdrop-blur-sm text-[#2f4823] px-2 py-1 rounded text-xs font-semibold border border-[#779385]/20">
+              {category}
+            </span>
+          </div>
+        )}
 
         {/* Overlay con features en hover */}
-        {isHovered && in_stock && features.length > 0 && (
+        {isHovered && in_stock && features && features.length > 0 && (
           <div className="absolute inset-0 bg-[#2f4823]/90 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="text-white text-center">
               <h4 className="font-semibold mb-3">Características:</h4>
               <ul className="text-sm space-y-1">
-                {features.map((feature, index) => (
+                {features.slice(0, 3).map((feature, index) => (
                   <li key={index}>✓ {feature}</li>
                 ))}
               </ul>
@@ -159,7 +198,7 @@ const ProductCard = ({
           }`}
           onClick={(e) => {
             e.stopPropagation();
-            if (in_stock) onProductClick();
+            handleCardClick();
           }}
           disabled={!in_stock}
         >

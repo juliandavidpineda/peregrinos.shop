@@ -174,7 +174,7 @@ def create_product(current_user_id, current_user_role):
             price=float(data.get('price')),
             original_price=float(data.get('original_price')) if data.get('original_price') else None,
             images=data.get('images', []),
-            category_id=data.get('category_id'),
+            category_id=data.get('category_id'),  # ← DEBE SER category_id
             subcategory=data.get('subcategory'),
             sizes=data.get('sizes', []),
             features=data.get('features', []),
@@ -201,11 +201,16 @@ def create_product(current_user_id, current_user_role):
 def update_product(current_user_id, current_user_role, product_id):
     """Actualizar un producto existente (Solo admins)"""
     try:
+        print(f"🔧 Headers recibidos: {dict(request.headers)}")
+        print(f"🔧 Content-Type: {request.content_type}")
+        print(f"🔧 Método: {request.method}")
+        print(f"🔧 Product ID: {product_id}")
         product = Product.query.get(product_id)
         if not product:
             return jsonify({'message': 'Product not found'}), 404
         
         data = request.get_json()
+        print(f"📥 UPDATE - Datos recibidos: {data}")  # ← AGREGAR
         
         # Actualizar campos
         if 'name' in data:
@@ -218,8 +223,8 @@ def update_product(current_user_id, current_user_role, product_id):
             product.original_price = float(data['original_price']) if data['original_price'] else None
         if 'images' in data:
             product.images = data['images']
-        if 'category' in data:
-            product.category = data['category']
+        if 'category_id' in data:  # ← CORREGIDO
+            product.category_id = data['category_id']  # ← CORREGIDO
         if 'subcategory' in data:
             product.subcategory = data['subcategory']
         if 'sizes' in data:
@@ -244,6 +249,9 @@ def update_product(current_user_id, current_user_role, product_id):
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ ERROR al actualizar: {str(e)}")  # ← AGREGAR
+        import traceback
+        traceback.print_exc()  # ← AGREGAR (muestra el stack trace completo)
         return jsonify({'message': str(e)}), 400
 
 @api.route('/products/<product_id>', methods=['DELETE'])

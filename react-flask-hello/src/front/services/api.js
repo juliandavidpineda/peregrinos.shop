@@ -9,6 +9,15 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+
+     console.log('🌐 API Request:', {
+    url,
+    method: options.method,
+    headers: options.headers,
+    body: options.body
+  });
+
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -21,6 +30,8 @@ class ApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('❌ Error del servidor:', errorData);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       

@@ -19,13 +19,15 @@ const ShopSidebar = ({
     }).format(price);
   };
 
-  // Datos de productos específicos
-  const products = [
-    { name: "Camiseta BeTone", count: 5 },
-    { name: "Camiseta Manga Larga con Botones", count: 3 },
-    { name: "Blusa Bordada", count: 4 },
-    { name: "Saco con Cierre", count: 2 }
-  ];
+  // Función para limpiar todos los filtros
+  const handleClearFilters = () => {
+    // Limpiar categorías seleccionadas
+    selectedCategories.forEach(categoryId => {
+      onCategoryChange(categoryId);
+    });
+    // Resetear precio al máximo
+    onPriceRangeChange({ target: { value: 300000 } });
+  };
 
   return (
     <>
@@ -47,7 +49,7 @@ const ShopSidebar = ({
           <p className="text-sm text-[#779385] mt-1">Refina tu búsqueda</p>
         </div>
 
-        {/* Filtro por categorías */}
+        {/* Filtro por categorías - CORREGIDO */}
         <div className="mb-8">
           <h3 className="font-semibold text-[#2f4823] mb-4 flex items-center gap-2">
             <span className="text-[#779385]">●</span>
@@ -55,12 +57,12 @@ const ShopSidebar = ({
           </h3>
           <div className="space-y-3">
             {categories.map(category => (
-              <label key={category.name} className="flex items-center justify-between group cursor-pointer">
+              <label key={category.id} className="flex items-center justify-between group cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
-                    checked={selectedCategories.includes(category.name)}
-                    onChange={() => onCategoryChange(category.name)}
+                    checked={selectedCategories.includes(category.id)}
+                    onChange={() => onCategoryChange(category.id)}
                     className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823] focus:ring-2"
                   />
                   <span className="text-[#2f4823] group-hover:text-[#1f3219] transition-colors">
@@ -72,32 +74,26 @@ const ShopSidebar = ({
                 </span>
               </label>
             ))}
+            
+            {/* Mensaje si no hay categorías */}
+            {categories.length === 0 && (
+              <p className="text-sm text-[#779385] italic">
+                No hay categorías disponibles
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Filtro por tipo de producto */}
+        {/* Filtro por tipo de producto - OPCIONAL */}
         <div className="mb-8">
           <h3 className="font-semibold text-[#2f4823] mb-4 flex items-center gap-2">
             <span className="text-[#779385]">●</span>
             Tipo de Prenda
           </h3>
           <div className="space-y-3">
-            {products.map(product => (
-              <label key={product.name} className="flex items-center justify-between group cursor-pointer">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823] focus:ring-2"
-                  />
-                  <span className="text-[#2f4823] text-sm group-hover:text-[#1f3219] transition-colors">
-                    {product.name}
-                  </span>
-                </div>
-                <span className="text-sm text-[#779385] bg-[#f7f2e7] px-2 py-1 rounded-full">
-                  {product.count}
-                </span>
-              </label>
-            ))}
+            <div className="text-sm text-[#779385] italic">
+              Próximamente más filtros...
+            </div>
           </div>
         </div>
 
@@ -109,19 +105,19 @@ const ShopSidebar = ({
           </h3>
           <input
             type="range"
-            min="120000"
-            max="300000"
+            min="0"
+            max="800000"
             step="10000"
             value={priceRange}
             onChange={onPriceRangeChange}
             className="w-full h-2 bg-[#779385]/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#2f4823]"
           />
           <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-[#779385]">{formatPrice(120000)}</span>
+            <span className="text-sm text-[#779385]">{formatPrice(0)}</span>
             <span className="font-semibold text-[#2f4823] bg-[#f7f2e7] px-3 py-1 rounded-full text-sm">
               Hasta {formatPrice(priceRange)}
             </span>
-            <span className="text-sm text-[#779385]">{formatPrice(300000)}</span>
+            <span className="text-sm text-[#779385]">{formatPrice(800000)}</span>
           </div>
         </div>
 
@@ -129,12 +125,7 @@ const ShopSidebar = ({
         {(selectedCategories.length > 0 || priceRange < 300000) && (
           <button 
             className="w-full py-2 px-4 border border-[#779385] text-[#779385] rounded-lg hover:bg-[#f7f2e7] transition-colors font-medium"
-            onClick={() => {
-              // Limpiar categorías
-              selectedCategories.forEach(cat => onCategoryChange(cat));
-              // Resetear precio
-              onPriceRangeChange({ target: { value: 300000 } });
-            }}
+            onClick={handleClearFilters}
           >
             Limpiar Filtros
           </button>
@@ -154,11 +145,11 @@ const ShopSidebar = ({
         isOpen={isMobileModalOpen}
         onClose={onMobileModalToggle}
         categories={categories}
-        products={products}
         selectedCategories={selectedCategories}
         onCategoryChange={onCategoryChange}
         priceRange={priceRange}
         onPriceRangeChange={onPriceRangeChange}
+        onClearFilters={handleClearFilters}
       />
     </>
   );
