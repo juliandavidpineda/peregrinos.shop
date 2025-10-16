@@ -55,7 +55,7 @@ const CartModal = ({ isOpen, onClose }) => {
         <div className="bg-[#2f4823] text-white p-6 flex justify-between items-center">
           <div>
             <h2 className="font-serif font-bold text-xl">
-              Tu Carrito Espiritual
+              Tu Carrito de compras
             </h2>
             <p className="text-[#779385] text-sm mt-1">
               {itemCount} {itemCount === 1 ? 'item' : 'items'}

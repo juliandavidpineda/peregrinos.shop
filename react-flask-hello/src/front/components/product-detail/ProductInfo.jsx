@@ -1,16 +1,18 @@
 import React from 'react';
 import { useCart } from '../../context/CartContext';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const ProductInfo = ({ 
   product, 
   selectedSize, 
   onSizeChange, 
   quantity, 
-  onQuantityChange, 
-  onBuyNow 
+  onQuantityChange 
 }) => {
   
   const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
@@ -22,16 +24,38 @@ const ProductInfo = ({
 
   const handleAddToCart = () => {
     if (!selectedSize) {
-      alert('Por favor selecciona una talla');
+      toast.error('Por favor selecciona una talla');
       return;
     }
 
     if (!product.in_stock) {
-      alert('Este producto está agotado');
+      toast.error('Este producto está agotado');
       return;
     }
 
+    // Agregar al carrito
     addToCart(product, selectedSize, quantity);
+    
+    // Mostrar confirmación
+    toast.success(`¡${quantity} ${product.name} talla ${selectedSize} agregado al carrito!`);
+  };
+
+  const handleBuyNow = () => {
+    if (!selectedSize) {
+      toast.error('Por favor selecciona una talla');
+      return;
+    }
+
+    if (!product.in_stock) {
+      toast.error('Este producto está agotado');
+      return;
+    }
+
+    // Primero agregar al carrito
+    addToCart(product, selectedSize, quantity);
+    
+    // Luego redirigir al carrito
+    navigate('/cart');
   };
 
   const renderStars = (rating) => {
@@ -112,7 +136,7 @@ const ProductInfo = ({
         </label>
         
         <div className="flex flex-wrap gap-2">
-          {(product.sizes || []).map((size) => (
+          {(product.sizes || ['S', 'M', 'L', 'XL']).map((size) => (
             <button
               key={size}
               onClick={() => onSizeChange(size)}
@@ -128,13 +152,6 @@ const ProductInfo = ({
               {size}
             </button>
           ))}
-          
-          {/* Mensaje si no hay tallas definidas */}
-          {(product.sizes || []).length === 0 && (
-            <p className="text-[#779385] text-sm italic">
-              Talla única
-            </p>
-          )}
         </div>
       </div>
 
@@ -146,9 +163,9 @@ const ProductInfo = ({
         <div className="flex items-center gap-3">
           <button 
             onClick={() => onQuantityChange(Math.max(1, quantity - 1))}
-            disabled={!product.in_stock}
+            disabled={!product.in_stock || quantity <= 1}
             className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-colors ${
-              product.in_stock
+              product.in_stock && quantity > 1
                 ? 'border-[#779385] text-[#779385] hover:bg-[#779385] hover:text-white'
                 : 'border-gray-300 text-gray-400 cursor-not-allowed'
             }`}
@@ -162,9 +179,9 @@ const ProductInfo = ({
           </span>
           <button 
             onClick={() => onQuantityChange(quantity + 1)}
-            disabled={!product.in_stock}
+            disabled={!product.in_stock || (product.stock_quantity && quantity >= product.stock_quantity)}
             className={`w-10 h-10 rounded-lg border flex items-center justify-center transition-colors ${
-              product.in_stock
+              product.in_stock && (!product.stock_quantity || quantity < product.stock_quantity)
                 ? 'border-[#779385] text-[#779385] hover:bg-[#779385] hover:text-white'
                 : 'border-gray-300 text-gray-400 cursor-not-allowed'
             }`}
@@ -185,29 +202,46 @@ const ProductInfo = ({
       <div className="space-y-3 mb-6">
         <button 
           onClick={handleAddToCart}
-          disabled={!product.in_stock}
+          disabled={!product.in_stock || !selectedSize}
           className={`w-full py-4 rounded-lg font-semibold transition-colors ${
-            product.in_stock
-              ? 'bg-[#2f4823] text-white hover:bg-[#1f3219]'
+            product.in_stock && selectedSize
+              ? 'bg-[#2f4823] text-white hover:bg-[#1f3219] transform hover:scale-105'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {product.in_stock ? 'Agregar al Carrito' : 'Agotado'}
+          {product.in_stock ? '🛒 Agregar al Carrito' : 'Agotado'}
         </button>
         
         <button 
-          onClick={onBuyNow}
-          disabled={!product.in_stock}
+          onClick={handleBuyNow}
+          disabled={!product.in_stock || !selectedSize}
           className={`w-full py-4 rounded-lg font-semibold transition-colors ${
-            product.in_stock
-              ? 'bg-[#779385] text-white hover:bg-[#5a7568]'
+            product.in_stock && selectedSize
+              ? 'bg-[#779385] text-white hover:bg-[#5a7568] transform hover:scale-105'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
         >
-          Comprar Ahora
+          ⚡ Comprar Ahora
         </button>
       </div>
-      
+
+      {/* Garantías y beneficios */}
+      <div className="border-t border-[#779385]/20 pt-4">
+        <div className="space-y-2 text-sm text-[#779385]">
+          <div className="flex items-center gap-2">
+            <span>🛡️</span>
+            <span>Garantía de calidad</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>🚚</span>
+            <span>Envío gratis en compras mayores a $300.000</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>🔒💳</span>
+            <span>Pago protegido</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

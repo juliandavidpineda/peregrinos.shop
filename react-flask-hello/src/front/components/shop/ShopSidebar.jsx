@@ -26,7 +26,7 @@ const ShopSidebar = ({
       onCategoryChange(categoryId);
     });
     // Resetear precio al máximo
-    onPriceRangeChange({ target: { value: 300000 } });
+    onPriceRangeChange({ target: { value: 800000 } });
   };
 
   return (
@@ -122,7 +122,7 @@ const ShopSidebar = ({
         </div>
 
         {/* Botón limpiar filtros */}
-        {(selectedCategories.length > 0 || priceRange < 300000) && (
+        {(selectedCategories.length > 0 || priceRange < 800000) && (
           <button 
             className="w-full py-2 px-4 border border-[#779385] text-[#779385] rounded-lg hover:bg-[#f7f2e7] transition-colors font-medium"
             onClick={handleClearFilters}
