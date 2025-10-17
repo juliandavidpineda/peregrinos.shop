@@ -16,6 +16,7 @@ const ProductDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [failedImages, setFailedImages] = useState(new Set()); // ✅ Track imágenes fallidas
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -45,6 +46,25 @@ const ProductDetailPage = () => {
       loadProduct();
     }
   }, [productId]);
+
+  // ✅ FILTRAR imágenes que fallaron al cargar
+  const getValidImages = () => {
+    if (!product || !product.images) return [];
+    
+    return product.images.filter(image => !failedImages.has(image));
+  };
+
+  // ✅ MANEJAR error de carga de imagen
+  const handleImageError = (imagePath) => {
+    console.log('❌ Image failed in ProductDetail, adding to failed set:', imagePath);
+    setFailedImages(prev => new Set(prev).add(imagePath));
+    
+    // ✅ Si la imagen seleccionada falla, cambiar a la primera imagen válida
+    const validImages = getValidImages();
+    if (validImages.length > 0 && selectedImage >= validImages.length) {
+      setSelectedImage(0);
+    }
+  };
 
   const handleAddToCart = () => {
     if (!selectedSize) {
@@ -134,6 +154,11 @@ const ProductDetailPage = () => {
     );
   }
 
+  // ✅ OBTENER imágenes válidas
+  const validImages = getValidImages();
+  console.log('🖼️ Valid images for display:', validImages);
+  console.log('❌ Failed images:', Array.from(failedImages));
+
   return (
     <div className="min-h-screen bg-[#f7f2e7]">
       <ProductHero 
@@ -144,10 +169,11 @@ const ProductDetailPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12">
           <ProductImageGallery 
-            images={product.images || []}
+            images={validImages} // ✅ Usar solo imágenes válidas
             name={product.name}
             selectedImage={selectedImage}
             onImageSelect={setSelectedImage}
+            onImageError={handleImageError} // ✅ Pasar manejador de errores
           />
 
           <ProductInfo 
@@ -165,7 +191,7 @@ const ProductDetailPage = () => {
 
         <RelatedProducts 
           currentProduct={product}
-          allProducts={[]} // Por ahora vacío, luego podemos cargar productos relacionados
+          allProducts={[]}
         />
       </div>
     </div>

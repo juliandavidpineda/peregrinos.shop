@@ -23,7 +23,7 @@ const AdminProducts = () => {
       navigate('/admin/login');
       return;
     }
-    
+
     if (!authLoading) {
       fetchData();
     }
@@ -36,10 +36,10 @@ const AdminProducts = () => {
         productService.getProducts(),
         categoryService.getCategories()
       ]);
-      
+
       const productsData = productsRes.products || [];
       const categoriesData = categoriesRes.categories || [];
-      
+
       setProducts(productsData);
       setFilteredProducts(productsData);
       setCategories(categoriesData);
@@ -82,36 +82,45 @@ const AdminProducts = () => {
     try {
       console.log('📦 Saving product data:', productData);
       console.log('🔑 Token exists:', !!localStorage.getItem('admin_token'));
-      
+
       let savedProductResponse;
-      
+
       if (editingProduct) {
         // ✅ ACTUALIZAR PRODUCTO EXISTENTE
         savedProductResponse = await productService.updateProduct(editingProduct.id, productData);
-        
+
+        // ✅ Obtener el producto actualizado del servidor
+        const refreshedProduct = await productService.getProductById(editingProduct.id);
+        const updatedProduct = refreshedProduct.product;
+
+        console.log('🔄 Product refreshed from server:', updatedProduct);
+
         // ✅ ACTUALIZAR editingProduct con los datos más recientes
-        const updatedProduct = savedProductResponse.product;
         setEditingProduct(updatedProduct);
-        
-        // ✅ Actualizar la lista de productos SIN cerrar el modal
+        setFormKey(prev => prev + 1); // Forzar re-render del form
+
+        // ✅ Actualizar la lista de productos
         await fetchData();
-        
+
         alert('✅ Producto actualizado exitosamente');
-        
+
       } else {
         // ✅ CREAR PRODUCTO NUEVO
         savedProductResponse = await productService.createProduct(productData);
         const newProduct = savedProductResponse.product;
-        
+
+        console.log('🆕 New product created:', newProduct);
+
         // ✅ Cambiar a modo edición con el producto recién creado
         setEditingProduct(newProduct);
-        
+        setFormKey(prev => prev + 1);
+
         // ✅ Recargar lista
         await fetchData();
-        
+
         alert('✅ Producto creado. Ahora puedes agregar imágenes y videos en la pestaña Multimedia.');
       }
-      
+
     } catch (error) {
       console.error('Error saving product:', error);
       alert(error.message || 'Error al guardar el producto');
@@ -146,14 +155,14 @@ const AdminProducts = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={fetchData}
             className="bg-[#779385] hover:bg-[#5a7265] text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
           >
             <span>🔄</span>
             <span>Actualizar</span>
           </button>
-          <button 
+          <button
             onClick={handleCreate}
             className="bg-[#2f4823] hover:bg-[#1f3219] text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2 font-semibold"
           >
@@ -164,14 +173,14 @@ const AdminProducts = () => {
       </div>
 
       {/* Filters */}
-      <ProductFilters 
+      <ProductFilters
         products={products}
         categories={categories}
         onFilterChange={handleFilterChange}
       />
 
       {/* Products List */}
-      <ProductList 
+      <ProductList
         products={filteredProducts}
         categories={categories}
         loading={loading}
@@ -182,12 +191,39 @@ const AdminProducts = () => {
       {/* Modal Form */}
       {showModal && (
         <ProductForm
+          key={formKey}
           product={editingProduct}
           categories={categories}
           onSave={handleSave}
+          onProductUpdate={async (updatedProduct) => {
+            console.log('📸 Media change detected:', updatedProduct);
+            console.log('📸 New images from server:', updatedProduct.images);
+
+            try {
+              // Pequeño delay para asegurar que el servidor procese la eliminación
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+              const response = await productService.getProductById(updatedProduct.id);
+              const freshProduct = response.product;
+
+              console.log('🔄 Product reloaded:', freshProduct);
+              console.log('🔄 Fresh images:', freshProduct.images);
+
+              setEditingProduct(freshProduct);
+              setFormKey(prev => prev + 1);
+
+              fetchData().catch(err => console.error('Error updating list:', err));
+
+            } catch (error) {
+              console.error('❌ Error reloading product:', error);
+              setEditingProduct(updatedProduct);
+              setFormKey(prev => prev + 1);
+            }
+          }}
           onClose={() => {
             setShowModal(false);
             setEditingProduct(null);
+            setFormKey(0);
           }}
         />
       )}

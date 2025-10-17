@@ -147,6 +147,8 @@ export const mediaService = {
     const token = localStorage.getItem('admin_token');
     if (!token) throw new Error('No authentication token found');
 
+    console.log('🔧 mediaService.deleteMedia llamado:', { productId, filePath, fileType });
+
     const response = await fetch(`${API_BASE_URL}/api/admin/upload/${productId}`, {
       method: 'DELETE',
       headers: {
@@ -158,6 +160,8 @@ export const mediaService = {
         type: fileType // 'image' o 'video'
       })
     });
+
+    console.log('🔧 Response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();

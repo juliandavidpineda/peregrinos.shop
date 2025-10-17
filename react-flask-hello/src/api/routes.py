@@ -699,69 +699,92 @@ def upload_media(current_user_id, current_user_role, product_id):
 @api.route('/admin/upload/<product_id>', methods=['DELETE'])
 @admin_required
 def delete_media(current_user_id, current_user_role, product_id):
-    """Eliminar una imagen o video de un producto"""
+    """Eliminar una imagen o video de un producto - VERSIÓN CORREGIDA"""
     try:
+        print(f"🔧 DELETE request recibida para product_id: {product_id}")
+        
+        # ✅ OBTENER el producto con lock para evitar condiciones de carrera
         product = Product.query.get(product_id)
         if not product:
+            print(f"❌ Producto no encontrado: {product_id}")
             return jsonify({'message': 'Producto no encontrado'}), 404
         
         data = request.get_json()
+        print(f"📦 Datos recibidos: {data}")
+        
         file_path = data.get('file_path')
         file_type = data.get('type')
         
         if not file_path or not file_type:
+            print(f"❌ Faltan parámetros: file_path={file_path}, file_type={file_type}")
             return jsonify({'message': 'Ruta de archivo y tipo requeridos'}), 400
         
         # Determinar campo a actualizar
         media_field = 'images' if file_type == 'image' else 'videos'
+        
+        # ✅ OBTENER la lista actual y hacer una COPIA
         current_media = getattr(product, media_field, []) or []
+        print(f"🗑️ Eliminando archivo: {file_path}")
+        print(f"📋 Lista actual de {media_field}: {current_media}")
         
-        print(f"🗑️ Eliminando archivo: {file_path} de {media_field}")
-        print(f"📋 Lista ANTES de eliminar: {current_media}")
-        
-        # Remover de la lista
+        # ✅ VERIFICAR y remover de la lista
         if file_path in current_media:
-            current_media.remove(file_path)
-            setattr(product, media_field, current_media)
+            print(f"✅ Archivo encontrado en la lista, eliminando...")
+            # ✅ CREAR NUEVA LISTA sin el archivo
+            updated_media = [img for img in current_media if img != file_path]
+            print(f"📋 Lista después de eliminar: {updated_media}")
             
-            print(f"📋 Lista DESPUÉS de eliminar: {current_media}")
+            # ✅ ACTUALIZAR EL PRODUCTO con la nueva lista
+            setattr(product, media_field, updated_media)
             
-            # Eliminar archivo físico
+        else:
+            print(f"❌ Archivo NO encontrado en la lista: {file_path}")
+            return jsonify({'message': 'Archivo no encontrado en el producto'}), 404
+        
+        # Eliminar archivo físico (solo para archivos locales)
+        if file_path.startswith('/uploads/'):
             try:
-                # Construir ruta física correcta
                 current_dir = os.path.dirname(__file__)
                 project_root = os.path.join(current_dir, '..', '..')
-                # file_path es como: /uploads/images/uuid.png
-                # Remover el / inicial
                 relative_path = file_path.lstrip('/')
                 full_physical_path = os.path.join(project_root, relative_path)
                 full_physical_path = os.path.abspath(full_physical_path)
                 
+                print(f"📁 Ruta física del archivo: {full_physical_path}")
+                
                 if os.path.exists(full_physical_path):
                     os.remove(full_physical_path)
-                    print(f"✅ Archivo físico eliminado: {full_physical_path}")
+                    print(f"✅ Archivo físico eliminado")
                 else:
-                    print(f"⚠️ Archivo físico no encontrado: {full_physical_path}")
+                    print(f"⚠️ Archivo físico no encontrado (pero se removió de la lista)")
+                    
             except Exception as e:
                 print(f"⚠️ Error eliminando archivo físico: {e}")
+        else:
+            print(f"ℹ️ Es una URL externa, no se elimina archivo físico")
         
+        # ✅ HACER COMMIT para guardar los cambios
         db.session.commit()
+        
+        # ✅ CRÍTICO: Recargar el producto desde la base de datos
         db.session.refresh(product)
         
-        print(f"✅ Delete completado.")
-        print(f"📸 Imágenes FINALES: {product.images}")
-        print(f"🎥 Videos FINALES: {product.videos}")
+        print(f"✅ DELETE completado exitosamente")
+        print(f"📸 Estado final REAL desde BD - images: {product.images}")
+        print(f"🎥 Estado final REAL desde BD - videos: {product.videos}")
         
         return jsonify({
             'message': 'Archivo eliminado correctamente',
-            'product': product.serialize()
+            'product': product.serialize()  # ✅ Esto ahora tendrá los datos ACTUALIZADOS
         }), 200
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error en delete: {e}")
+        print(f"❌ Error en DELETE: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': str(e)}), 400
-    
+            
 # Endpoint para reordenar archivos multimedia
 @api.route('/admin/upload/<product_id>/reorder', methods=['PUT'])
 @admin_required

@@ -27,41 +27,35 @@ const ProductForm = ({ product, categories, onSave, onClose, onProductUpdate }) 
   const [errors, setErrors] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
 
-  useEffect(() => {
-  console.log('📊 FormData actual:', {
-    images: formData.images,
-    imagesCount: formData.images?.length,
-    activeTab: activeTab
-  });
-}, [formData.images, activeTab]);
-
-  useEffect(() => {
-    if (product) {
-      console.log('🔄 Product changed:', product);
-      setFormData({
-        name: product.name || '',
-        description: product.description || '',
-        price: product.price || '',
-        original_price: product.original_price || '',
-        category_id: product.category_id || '',
-        subcategory: product.subcategory || '',
-        images: product.images || [],
-        sizes: product.sizes || ['S', 'M', 'L', 'XL'],
-        features: product.features?.length > 0 ? product.features : [''],
-        stock_quantity: product.stock_quantity || 0,
-        in_stock: product.in_stock ?? true,
-        is_new: product.is_new || false,
-        is_on_sale: product.is_on_sale || false,
-        material: product.material || '',
-        cuidados: product.cuidados || '',
-        origen: product.origen || '',
-        disponibilidad: product.disponibilidad || '',
-        costo_prenda: product.costo_prenda || '',
-        videos: product.videos || []
-      });
-      console.log('📸 Images loaded:', product.images);
-    }
-  }, [product]);
+  // En ProductForm.jsx, en el useEffect principal:
+useEffect(() => {
+  if (product) {
+    console.log('🔄 Product changed:', product);
+    console.log('📸 Images loaded:', product.images);
+    
+    setFormData({
+      name: product.name || '',
+      description: product.description || '',
+      price: product.price || '',
+      original_price: product.original_price || '',
+      category_id: product.category_id || '',
+      subcategory: product.subcategory || '',
+      images: product.images || [], // ✅ Siempre usar product.images directamente
+      sizes: product.sizes || ['S', 'M', 'L', 'XL'],
+      features: product.features?.length > 0 ? product.features : [''],
+      stock_quantity: product.stock_quantity || 0,
+      in_stock: product.in_stock ?? true,
+      is_new: product.is_new || false,
+      is_on_sale: product.is_on_sale || false,
+      material: product.material || '',
+      cuidados: product.cuidados || '',
+      origen: product.origen || '',
+      disponibilidad: product.disponibilidad || '',
+      costo_prenda: product.costo_prenda || '',
+      videos: product.videos || [] // ✅ Siempre usar product.videos directamente
+    });
+  }
+}, [product]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -106,27 +100,24 @@ const ProductForm = ({ product, categories, onSave, onClose, onProductUpdate }) 
     }));
   };
 
-  // ✅ CORREGIDO: Actualizar multimedia Y mantener los cambios
+  // ✅ CORREGIDO: Actualizar multimedia Y notificar al padre
   const handleMediaUpdate = (updatedProduct) => {
-    console.log('🔄 Media updated:', updatedProduct);
-    console.log('📸 New images:', updatedProduct.images);
-    console.log('🎥 New videos:', updatedProduct.videos);
+    console.log('🔄 Media updated in ProductForm:', updatedProduct);
+    console.log('📸 New images from server:', updatedProduct.images);
+    console.log('🎥 New videos from server:', updatedProduct.videos);
     
-    // ✅ ACTUALIZAR formData inmediatamente
-    setFormData(prev => {
-      const newState = {
-        ...prev,
-        images: updatedProduct.images || [],
-        videos: updatedProduct.videos || []
-      };
-      console.log('✅ FormData actualizado:', newState.images);
-      return newState;
-    });
+    // ✅ ACTUALIZAR formData con los datos del servidor
+    setFormData(prev => ({
+      ...prev,
+      images: updatedProduct.images || [],
+      videos: updatedProduct.videos || []
+    }));
     
-    // ✅ FORZAR RE-RENDER del MediaUpload para que muestre las imágenes actualizadas
-  setTimeout(() => {
-    // Esto hará que MediaUpload reciba las nuevas props
-  }, 100);
+    // ✅ NOTIFICAR AL PADRE para que actualice editingProduct
+    if (onProductUpdate) {
+      console.log('📡 Notifying parent about product update');
+      onProductUpdate(updatedProduct);
+    }
   };
 
   const validate = () => {
@@ -503,7 +494,6 @@ const ProductForm = ({ product, categories, onSave, onClose, onProductUpdate }) 
     <div className="space-y-6">
       {product ? (
         <MediaUpload
-          key={`media-${product.id}-${formData.images?.length || 0}`} // ✅ Forzar re-render cuando cambien las imágenes
           productId={product.id}
           onMediaUpdate={handleMediaUpdate}
           existingImages={formData.images}
