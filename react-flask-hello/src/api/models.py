@@ -129,15 +129,15 @@ class Product(db.Model):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     original_price: Mapped[float] = mapped_column(Float, nullable=True)
-    images: Mapped[list] = mapped_column(JSON, nullable=True)
     
     # Foreign Keys
     category_id: Mapped[str] = mapped_column(String(36), ForeignKey('categories.id'), nullable=False)
     
     # Campos adicionales
     subcategory: Mapped[str] = mapped_column(String(100), nullable=True)
-    sizes: Mapped[list] = mapped_column(JSON, nullable=True)
-    features: Mapped[list] = mapped_column(JSON, nullable=True)
+    sizes: Mapped[list] = mapped_column(JSON, nullable=True, default=list) 
+    features: Mapped[list] = mapped_column(JSON, nullable=True, default=list)  
+
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
     rating: Mapped[float] = mapped_column(Float, default=0.0)
@@ -146,8 +146,8 @@ class Product(db.Model):
     is_on_sale: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # CAMPOS MULTIMEDIA
-    images: Mapped[list] = mapped_column(JSON, nullable=True)  # ["/uploads/images/camiseta1.jpg"]
-    videos: Mapped[list] = mapped_column(JSON, nullable=True)  # ["/uploads/videos/demo-producto.mp4"]
+    images: Mapped[list] = mapped_column(JSON, nullable=True, default=list) 
+    videos: Mapped[list] = mapped_column(JSON, nullable=True, default=list)  
 
     # NUEVOS CAMPOS DE DETALLES
     material: Mapped[str] = mapped_column(String(200), nullable=True)
@@ -188,7 +188,6 @@ class Product(db.Model):
             'is_new': self.is_new,
             'is_on_sale': self.is_on_sale,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'images': self.images or [],
             'videos': self.videos or [],
             'material': self.material,
             'cuidados': self.cuidados,
@@ -196,7 +195,7 @@ class Product(db.Model):
             'disponibilidad': self.disponibilidad,
             'costo_prenda': self.costo_prenda
         }
-
+    
 class Order(db.Model):
     __tablename__ = 'orders'
     

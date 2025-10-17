@@ -10,14 +10,6 @@ class ApiService {
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
-     console.log('🌐 API Request:', {
-    url,
-    method: options.method,
-    headers: options.headers,
-    body: options.body
-  });
-
-
     const config = {
       headers: {
         'Content-Type': 'application/json',

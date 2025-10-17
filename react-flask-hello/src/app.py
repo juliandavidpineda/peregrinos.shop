@@ -69,3 +69,45 @@ def serve_any_other_file(path):
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3001))
     app.run(host='0.0.0.0', port=PORT, debug=True)
+
+# =============================================================================
+# SERVIR ARCHIVOS UPLOADS - RUTA CRÍTICA
+# =============================================================================
+
+@app.route('/api/uploads/<path:folder>/<path:filename>')
+def serve_uploaded_file(folder, filename):
+    """
+    Servir archivos subidos desde la carpeta uploads/
+    Ejemplo: /api/uploads/images/uuid.png
+    """
+    try:
+        # Determinar la ruta base del proyecto
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Si estamos en src/, subir un nivel
+        if current_dir.endswith('src'):
+            project_root = os.path.dirname(current_dir)
+        else:
+            project_root = current_dir
+        
+        # Construir ruta completa al archivo
+        file_path = os.path.join(project_root, 'uploads', folder, filename)
+        file_path = os.path.abspath(file_path)
+        
+        print(f"📁 Serving file: {file_path}")
+        print(f"📁 Folder: {folder}, Filename: {filename}")
+        
+        # Verificar que el archivo existe
+        if not os.path.exists(file_path):
+            print(f"❌ File not found: {file_path}")
+            return jsonify({'error': 'File not found'}), 404
+        
+        # Servir el archivo
+        return send_from_directory(
+            os.path.join(project_root, 'uploads', folder), 
+            filename
+        )
+        
+    except Exception as e:
+        print(f"❌ Error serving file: {e}")
+        return jsonify({'error': str(e)}), 500

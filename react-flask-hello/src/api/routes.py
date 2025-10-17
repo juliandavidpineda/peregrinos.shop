@@ -550,7 +550,7 @@ def update_order_status(current_user_id, current_user_role, order_id):
         return jsonify({'message': str(e)}), 400
 
 # =============================================================================
-# CONTENIDO MULTIMEDIA PARA PRODUCTOS
+# CONTENIDO MULTIMEDIA PARA PRODUCTOS - VERSIÓN CORREGIDA
 # =============================================================================   
 
 # Configuración de archivos permitidos
@@ -562,24 +562,7 @@ def allowed_file(filename, allowed_extensions):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
-def save_uploaded_file(file, folder):
-    if file and allowed_file(file.filename, ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS):
-        # Generar nombre único
-        file_ext = file.filename.rsplit('.', 1)[1].lower()
-        unique_filename = f"{uuid.uuid4()}.{file_ext}"
-        
-        # Crear directorio si no existe
-        upload_dir = os.path.join(current_app.root_path, 'uploads', folder)
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        # Guardar archivo
-        file_path = os.path.join(upload_dir, unique_filename)
-        file.save(file_path)
-        
-        return f"/uploads/{folder}/{unique_filename}"
-    return None
-
-# ✅ SERVIR ARCHIVOS UPLOADS - SOLO UN ENDPOINT
+# ✅ SOLUCIÓN DEFINITIVA - UNA SOLA FUNCIÓN
 def save_uploaded_file(file, folder):
     """Guardar archivo en uploads/folder/ EN LA RAÍZ DEL PROYECTO"""
     if file and allowed_file(file.filename, ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS):
@@ -628,15 +611,14 @@ def save_uploaded_file(file, folder):
         return f"/uploads/{folder}/{unique_filename}"
     return None
 
-
 # =============================================================================
-# UPLOAD DE ARCHIVOS - GUARDAR CON RUTA CORRECTA
+# UPLOAD DE ARCHIVOS - VERSIÓN CORREGIDA
 # =============================================================================
 
 @api.route('/admin/upload/<product_id>', methods=['POST'])
 @admin_required
 def upload_media(current_user_id, current_user_role, product_id):
-    """Subir imágenes o videos para un producto"""
+    """Subir imágenes o videos para un producto - VERSIÓN CORREGIDA"""
     try:
         product = Product.query.get(product_id)
         if not product:
@@ -648,6 +630,13 @@ def upload_media(current_user_id, current_user_role, product_id):
         files = request.files.getlist('files')
         uploaded_files = []
         
+        # ✅ CREAR NUEVAS LISTAS BASADAS EN LAS EXISTENTES
+        new_images = product.images.copy() if product.images else []
+        new_videos = product.videos.copy() if product.videos else []
+        
+        print(f"📸 Imágenes existentes: {new_images}")
+        print(f"🎥 Videos existentes: {new_videos}")
+        
         for file in files:
             if file.filename == '':
                 continue
@@ -658,33 +647,41 @@ def upload_media(current_user_id, current_user_role, product_id):
             file.seek(0)
             
             if file_size > MAX_FILE_SIZE:
+                print(f"⚠️ Archivo muy grande: {file.filename} ({file_size} bytes)")
                 continue
             
-            # Determinar tipo de archivo y carpeta
+            # Determinar tipo de archivo
             if allowed_file(file.filename, ALLOWED_IMAGE_EXTENSIONS):
                 folder = 'images'
-                media_field = 'images'
+                target_list = new_images
             elif allowed_file(file.filename, ALLOWED_VIDEO_EXTENSIONS):
                 folder = 'videos' 
-                media_field = 'videos'
+                target_list = new_videos
             else:
+                print(f"⚠️ Tipo de archivo no permitido: {file.filename}")
                 continue
             
             # Guardar archivo
             file_path = save_uploaded_file(file, folder)
             if file_path:
-                # ✅ CAMBIO: Guardar ruta SIN /api/ al inicio
-                # Formato: /uploads/images/uuid.png
-                
-                # Agregar a la lista correspondiente del producto
-                current_media = getattr(product, media_field, []) or []
-                current_media.append(file_path)
-                setattr(product, media_field, current_media)
+                target_list.append(file_path)
                 uploaded_files.append(file_path)
-                
-                print(f"✅ Archivo guardado: {file_path}")
+                print(f"✅ Archivo agregado a {folder}: {file_path}")
+        
+        # ✅ ACTUALIZAR EL PRODUCTO CON LAS NUEVAS LISTAS
+        product.images = new_images
+        product.videos = new_videos
+        
+        print(f"🔄 Producto actualizado - images: {product.images}")
+        print(f"🔄 Producto actualizado - videos: {product.videos}")
         
         db.session.commit()
+        
+        # ✅ VERIFICACIÓN FINAL
+        db.session.refresh(product)
+        print(f"✅ COMMIT exitoso")
+        print(f"📸 Imágenes finales en BD: {product.images}")
+        print(f"🎥 Videos finales en BD: {product.videos}")
         
         return jsonify({
             'message': f'Se subieron {len(uploaded_files)} archivos',
@@ -719,10 +716,15 @@ def delete_media(current_user_id, current_user_role, product_id):
         media_field = 'images' if file_type == 'image' else 'videos'
         current_media = getattr(product, media_field, []) or []
         
+        print(f"🗑️ Eliminando archivo: {file_path} de {media_field}")
+        print(f"📋 Lista ANTES de eliminar: {current_media}")
+        
         # Remover de la lista
         if file_path in current_media:
             current_media.remove(file_path)
             setattr(product, media_field, current_media)
+            
+            print(f"📋 Lista DESPUÉS de eliminar: {current_media}")
             
             # Eliminar archivo físico
             try:
@@ -738,10 +740,17 @@ def delete_media(current_user_id, current_user_role, product_id):
                 if os.path.exists(full_physical_path):
                     os.remove(full_physical_path)
                     print(f"✅ Archivo físico eliminado: {full_physical_path}")
+                else:
+                    print(f"⚠️ Archivo físico no encontrado: {full_physical_path}")
             except Exception as e:
                 print(f"⚠️ Error eliminando archivo físico: {e}")
         
         db.session.commit()
+        db.session.refresh(product)
+        
+        print(f"✅ Delete completado.")
+        print(f"📸 Imágenes FINALES: {product.images}")
+        print(f"🎥 Videos FINALES: {product.videos}")
         
         return jsonify({
             'message': 'Archivo eliminado correctamente',
@@ -750,8 +759,9 @@ def delete_media(current_user_id, current_user_role, product_id):
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error en delete: {e}")
         return jsonify({'message': str(e)}), 400
-
+    
 # Endpoint para reordenar archivos multimedia
 @api.route('/admin/upload/<product_id>/reorder', methods=['PUT'])
 @admin_required

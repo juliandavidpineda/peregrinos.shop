@@ -5,19 +5,20 @@ import { getBackendUrl } from '../../../utils/backendConfig';
 const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVideos = [] }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [localImages, setLocalImages] = useState(existingImages);
-  const [localVideos, setLocalVideos] = useState(existingVideos);
 
   const API_BASE_URL = getBackendUrl();
 
   console.log('🎯 MediaUpload rendered');
   console.log('🔧 API_BASE_URL:', API_BASE_URL);
+  console.log('🖼️ Existing images:', existingImages);
+  console.log('🎥 Existing videos:', existingVideos);
 
-  // ✅ Sincronizar con props cuando cambian
+  // ✅ Sincronizar cuando cambian las props
   React.useEffect(() => {
-    console.log('🔄 Props changed - Images:', existingImages?.length, 'Videos:', existingVideos?.length);
-    setLocalImages(existingImages || []);
-    setLocalVideos(existingVideos || []);
+    console.log('🔄 Props updated:', { 
+      images: existingImages?.length, 
+      videos: existingVideos?.length 
+    });
   }, [existingImages, existingVideos]);
 
   const handleFileSelect = async (event) => {
@@ -46,46 +47,43 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
     await uploadFiles(files);
   };
 
-  const uploadFiles = async (files) => {
-    try {
-      setUploading(true);
-      
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'video/mp4', 'video/mov', 'video/avi', 'video/webm'];
-      const validFiles = files.filter(file => allowedTypes.includes(file.type));
-      
-      if (validFiles.length === 0) {
-        alert('Solo se permiten archivos de imagen (JPEG, PNG, WEBP) y video (MP4, MOV, AVI, WEBM)');
-        return;
-      }
-
-      console.log('📤 Uploading files:', validFiles.map(f => f.name));
-      const result = await mediaService.uploadMedia(productId, validFiles);
-      
-      console.log('✅ Upload successful:', result);
-      
-      if (result.product) {
-        // ✅ NO usar estado local, pasar directamente al padre
-        const updatedImages = result.product.images || [];
-        const updatedVideos = result.product.videos || [];
-        
-        console.log('📸 Images after upload:', updatedImages);
-        console.log('🎥 Videos after upload:', updatedVideos);
-        
-        // Notificar al padre inmediatamente
-        if (onMediaUpdate) {
-          onMediaUpdate(result.product);
-        }
-      }
-      
-      alert(`✅ Se subieron ${result.uploaded_files?.length || 0} archivos exitosamente`);
-      
-    } catch (error) {
-      console.error('❌ Error uploading files:', error);
-      alert('❌ Error al subir archivos: ' + error.message);
-    } finally {
-      setUploading(false);
+const uploadFiles = async (files) => {
+  try {
+    setUploading(true);
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'video/mp4', 'video/mov', 'video/avi', 'video/webm'];
+    const validFiles = files.filter(file => allowedTypes.includes(file.type));
+    
+    if (validFiles.length === 0) {
+      alert('Solo se permiten archivos de imagen (JPEG, PNG, WEBP) y video (MP4, MOV, AVI, WEBM)');
+      return;
     }
-  };
+
+    console.log('📤 Uploading files to product:', productId, validFiles.map(f => f.name));
+    const result = await mediaService.uploadMedia(productId, validFiles);
+    
+    console.log('✅ Upload successful - Server response:', result);
+    
+    // ✅ VERIFICAR que el producto devuelto tenga las imágenes actualizadas
+    if (result.product && onMediaUpdate) {
+      console.log('📸 Server images after upload:', result.product.images);
+      console.log('🎥 Server videos after upload:', result.product.videos);
+      
+      // ✅ Notificar al padre con el producto COMPLETO actualizado
+      onMediaUpdate(result.product);
+    } else {
+      console.warn('⚠️ No product data in upload response');
+    }
+    
+    alert(`✅ Se subieron ${result.uploaded_files?.length || 0} archivos exitosamente`);
+    
+  } catch (error) {
+    console.error('❌ Error uploading files:', error);
+    alert('❌ Error al subir archivos: ' + error.message);
+  } finally {
+    setUploading(false);
+  }
+};
 
   const handleDeleteFile = async (filePath, fileType) => {
     if (!confirm('¿Estás seguro de eliminar este archivo?')) return;
@@ -96,14 +94,8 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
       
       console.log('✅ Delete successful:', result);
       
-      if (result.product) {
-        console.log('📸 Images after delete:', result.product.images);
-        console.log('🎥 Videos after delete:', result.product.videos);
-        
-        // Notificar al padre
-        if (onMediaUpdate) {
-          onMediaUpdate(result.product);
-        }
+      if (result.product && onMediaUpdate) {
+        onMediaUpdate(result.product);
       }
       
     } catch (error) {
@@ -112,27 +104,33 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
     }
   };
 
-  // ✅ FUNCIÓN SIMPLIFICADA PARA CONSTRUIR URL
+  // ✅ FUNCIÓN MEJORADA PARA CONSTRUIR URL
   const getMediaUrl = (mediaPath) => {
+    if (!mediaPath) {
+      console.warn('⚠️ Media path is empty');
+      return '';
+    }
+    
+    // Si ya es una URL completa, dejarla así
     if (mediaPath.startsWith('http')) {
       return mediaPath;
     }
     
-    // mediaPath viene como: /uploads/images/uuid.png
-    // Necesitamos: http://localhost:3001/api/uploads/images/uuid.png
-    const cleanPath = mediaPath.startsWith('/') ? mediaPath : `/${mediaPath}`;
+    // mediaPath viene como: "/uploads/images/uuid.png"
+    // Necesitamos: "http://localhost:3001/api/uploads/images/uuid.png"
+    let cleanPath = mediaPath;
+    
+    // Asegurar que empiece con /
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/' + cleanPath;
+    }
+    
+    // Construir URL completa
     const fullUrl = `${API_BASE_URL}/api${cleanPath}`;
     
-    console.log(`🔗 Media URL: ${mediaPath} -> ${fullUrl}`);
+    console.log(`🔗 Media URL: "${mediaPath}" -> "${fullUrl}"`);
     return fullUrl;
   };
-
-  // ✅ USAR PROPS DIRECTAMENTE (no estado local)
-  const displayImages = existingImages || [];
-  const displayVideos = existingVideos || [];
-  
-  console.log('🖼️ Rendering images:', displayImages.length, displayImages);
-  console.log('🎥 Rendering videos:', displayVideos.length, displayVideos);
 
   return (
     <div className="space-y-6">
@@ -181,33 +179,31 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
       </div>
 
       {/* Preview de Imágenes */}
-      {displayImages.length > 0 && (
+      {existingImages && existingImages.length > 0 && (
         <div>
           <h4 className="text-md font-semibold text-[#2f4823] mb-3">
-            🖼️ Imágenes ({displayImages.length})
+            🖼️ Imágenes ({existingImages.length})
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {displayImages.map((image, index) => {
+            {existingImages.map((image, index) => {
               const imageUrl = getMediaUrl(image);
               
               return (
-                <div key={`img-${index}-${image}`} className="relative group border border-gray-200 rounded-lg overflow-hidden">
+                <div key={`img-${index}-${image}`} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
                   <img
                     src={imageUrl}
                     alt={`Imagen ${index + 1}`}
                     className="w-full h-32 object-cover"
                     onError={(e) => {
                       console.error('❌ Error loading image:', imageUrl);
-                      e.target.style.border = '2px solid red';
-                      e.target.style.background = '#fee';
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBlbmNvbnRyYWRhPC90ZXh0Pjwvc3ZnPg==';
                     }}
-                    onLoad={() => console.log('✅ Image loaded:', imageUrl)}
+                    onLoad={() => console.log('✅ Image loaded successfully:', imageUrl)}
                   />
-                  {/* ✅ Botón de eliminar SIEMPRE visible en hover */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center">
                     <button
                       onClick={() => handleDeleteFile(image, 'image')}
-                      className="opacity-0 group-hover:opacity-100 bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-all transform scale-90 group-hover:scale-100 shadow-lg"
+                      className="opacity-0 group-hover:opacity-100 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all transform scale-90 group-hover:scale-100 shadow-lg"
                       title="Eliminar imagen"
                     >
                       🗑️
@@ -224,20 +220,20 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
       )}
 
       {/* Preview de Videos */}
-      {displayVideos.length > 0 && (
+      {existingVideos && existingVideos.length > 0 && (
         <div>
           <h4 className="text-md font-semibold text-[#2f4823] mb-3">
-            🎥 Videos ({displayVideos.length})
+            🎥 Videos ({existingVideos.length})
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {displayVideos.map((video, index) => {
+            {existingVideos.map((video, index) => {
               const videoUrl = getMediaUrl(video);
               
               return (
-                <div key={`vid-${index}-${video}`} className="relative group border border-gray-200 rounded-lg overflow-hidden">
+                <div key={`vid-${index}-${video}`} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-100">
                   <video
                     src={videoUrl}
-                    className="w-full h-40 object-cover bg-gray-100"
+                    className="w-full h-40 object-cover"
                     controls
                     preload="metadata"
                     onError={() => console.error('❌ Error loading video:', videoUrl)}
@@ -246,7 +242,7 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center pointer-events-none">
                     <button
                       onClick={() => handleDeleteFile(video, 'video')}
-                      className="pointer-events-auto opacity-0 group-hover:opacity-100 bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-all transform scale-90 group-hover:scale-100 shadow-lg"
+                      className="pointer-events-auto opacity-0 group-hover:opacity-100 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-all transform scale-90 group-hover:scale-100 shadow-lg"
                       title="Eliminar video"
                     >
                       🗑️
@@ -262,7 +258,7 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
         </div>
       )}
 
-      {displayImages.length === 0 && displayVideos.length === 0 && (
+      {(!existingImages || existingImages.length === 0) && (!existingVideos || existingVideos.length === 0) && (
         <div className="text-center py-8 text-gray-500">
           <div className="text-4xl mb-4">📷</div>
           <p>No hay archivos multimedia aún</p>

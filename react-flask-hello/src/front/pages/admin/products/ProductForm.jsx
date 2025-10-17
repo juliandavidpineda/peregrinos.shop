@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import MediaUpload from './MediaUpload';
 
-const ProductForm = ({ product, categories, onSave, onClose }) => {
+const ProductForm = ({ product, categories, onSave, onClose, onProductUpdate }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -26,6 +26,14 @@ const ProductForm = ({ product, categories, onSave, onClose }) => {
 
   const [errors, setErrors] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
+
+  useEffect(() => {
+  console.log('📊 FormData actual:', {
+    images: formData.images,
+    imagesCount: formData.images?.length,
+    activeTab: activeTab
+  });
+}, [formData.images, activeTab]);
 
   useEffect(() => {
     if (product) {
@@ -111,16 +119,14 @@ const ProductForm = ({ product, categories, onSave, onClose }) => {
         images: updatedProduct.images || [],
         videos: updatedProduct.videos || []
       };
-      console.log('✅ FormData actualizado:', newState);
+      console.log('✅ FormData actualizado:', newState.images);
       return newState;
     });
     
-    // ✅ NOTIFICAR AL PADRE que necesita refrescar el producto
-    // Esto hará que AdminProducts vuelva a cargar el producto desde el servidor
-    if (onSave && product) {
-      // No llamamos onSave aquí, solo actualizamos el estado local
-      // El producto ya está actualizado en el servidor por el upload
-    }
+    // ✅ FORZAR RE-RENDER del MediaUpload para que muestre las imágenes actualizadas
+  setTimeout(() => {
+    // Esto hará que MediaUpload reciba las nuevas props
+  }, 100);
   };
 
   const validate = () => {
@@ -497,6 +503,7 @@ const ProductForm = ({ product, categories, onSave, onClose }) => {
     <div className="space-y-6">
       {product ? (
         <MediaUpload
+          key={`media-${product.id}-${formData.images?.length || 0}`} // ✅ Forzar re-render cuando cambien las imágenes
           productId={product.id}
           onMediaUpdate={handleMediaUpdate}
           existingImages={formData.images}
