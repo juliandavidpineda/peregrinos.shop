@@ -1,8 +1,8 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from flask import Flask, request, jsonify, url_for, Blueprint
-from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead
+from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directory  # ✅ AGREGAR send_from_directory
+from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review  # ✅ AGREGAR Review
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
 import datetime
@@ -12,7 +12,7 @@ from sqlalchemy import func, desc, or_
 import os
 import uuid
 from werkzeug.utils import secure_filename
-from flask import current_app
+from flask import current_app, send_from_directory
 
 api = Blueprint('api', __name__)
 
@@ -179,14 +179,21 @@ def create_product(current_user_id, current_user_role):
             price=float(data.get('price')),
             original_price=float(data.get('original_price')) if data.get('original_price') else None,
             images=data.get('images', []),
-            category_id=data.get('category_id'),  # ← DEBE SER category_id
+            category_id=data.get('category_id'),
             subcategory=data.get('subcategory'),
             sizes=data.get('sizes', []),
             features=data.get('features', []),
             in_stock=bool(data.get('in_stock', True)),
             stock_quantity=int(data.get('stock_quantity', 0)),
             is_new=bool(data.get('is_new', False)),
-            is_on_sale=bool(data.get('is_on_sale', False))
+            is_on_sale=bool(data.get('is_on_sale', False)),
+            # NUEVOS CAMPOS
+            material=data.get('material'),
+            cuidados=data.get('cuidados'),
+            origen=data.get('origen'),
+            disponibilidad=data.get('disponibilidad'),
+            costo_prenda=float(data.get('costo_prenda')) if data.get('costo_prenda') else None,
+            videos=data.get('videos', [])
         )
         
         db.session.add(product)
@@ -215,7 +222,7 @@ def update_product(current_user_id, current_user_role, product_id):
             return jsonify({'message': 'Product not found'}), 404
         
         data = request.get_json()
-        print(f"📥 UPDATE - Datos recibidos: {data}")  # ← AGREGAR
+        print(f"📥 UPDATE - Datos recibidos: {data}")
         
         # Actualizar campos
         if 'name' in data:
@@ -228,8 +235,8 @@ def update_product(current_user_id, current_user_role, product_id):
             product.original_price = float(data['original_price']) if data['original_price'] else None
         if 'images' in data:
             product.images = data['images']
-        if 'category_id' in data:  # ← CORREGIDO
-            product.category_id = data['category_id']  # ← CORREGIDO
+        if 'category_id' in data:
+            product.category_id = data['category_id']
         if 'subcategory' in data:
             product.subcategory = data['subcategory']
         if 'sizes' in data:
@@ -244,6 +251,19 @@ def update_product(current_user_id, current_user_role, product_id):
             product.is_new = bool(data['is_new'])
         if 'is_on_sale' in data:
             product.is_on_sale = bool(data['is_on_sale'])
+        # NUEVOS CAMPOS
+        if 'material' in data:
+            product.material = data['material']
+        if 'cuidados' in data:
+            product.cuidados = data['cuidados']
+        if 'origen' in data:
+            product.origen = data['origen']
+        if 'disponibilidad' in data:
+            product.disponibilidad = data['disponibilidad']
+        if 'costo_prenda' in data:
+            product.costo_prenda = float(data['costo_prenda']) if data['costo_prenda'] else None
+        if 'videos' in data:
+            product.videos = data['videos']
         
         db.session.commit()
         
@@ -254,9 +274,9 @@ def update_product(current_user_id, current_user_role, product_id):
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ ERROR al actualizar: {str(e)}")  # ← AGREGAR
+        print(f"❌ ERROR al actualizar: {str(e)}")
         import traceback
-        traceback.print_exc()  # ← AGREGAR (muestra el stack trace completo)
+        traceback.print_exc()
         return jsonify({'message': str(e)}), 400
 
 @api.route('/products/<product_id>', methods=['DELETE'])
@@ -347,6 +367,7 @@ def get_top_selling_products():
             'message': 'Error al obtener productos más vendidos',
             'error': str(e)
         }), 500
+
 # =============================================================================
 # CATEGORY ENDPOINTS
 # =============================================================================
@@ -398,7 +419,7 @@ def create_category(current_user_id, current_user_role):
     
 
 # =============================================================================
-# ORDER ENDPOINTS -
+# ORDER ENDPOINTS
 # =============================================================================
 
 @api.route('/orders', methods=['POST'])
@@ -407,7 +428,7 @@ def create_order():
     try:
         data = request.get_json()
         
-        print("Datos recibidos para orden:", data)  # Debug
+        print("Datos recibidos para orden:", data)
         
         # Validar datos requeridos
         required_fields = ['customer_info', 'items']
@@ -443,7 +464,7 @@ def create_order():
         )
         
         db.session.add(order)
-        db.session.flush()  # Para obtener el ID de la orden
+        db.session.flush()
         
         # Crear items de la orden
         for item_data in items:
@@ -466,7 +487,7 @@ def create_order():
         
     except Exception as e:
         db.session.rollback()
-        print("Error creating order:", str(e))  # Debug
+        print("Error creating order:", str(e))
         return jsonify({'message': f'Error creating order: {str(e)}'}), 400
 
 @api.route('/orders/<order_id>', methods=['GET'])
@@ -527,9 +548,9 @@ def update_order_status(current_user_id, current_user_role, order_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
-    
+
 # =============================================================================
-# CONTENIDO MULTIMEDIA PARA PRODUCTOS -
+# CONTENIDO MULTIMEDIA PARA PRODUCTOS
 # =============================================================================   
 
 # Configuración de archivos permitidos
@@ -558,7 +579,60 @@ def save_uploaded_file(file, folder):
         return f"/uploads/{folder}/{unique_filename}"
     return None
 
-# Endpoint para subir archivos multimedia
+# ✅ SERVIR ARCHIVOS UPLOADS - SOLO UN ENDPOINT
+def save_uploaded_file(file, folder):
+    """Guardar archivo en uploads/folder/ EN LA RAÍZ DEL PROYECTO"""
+    if file and allowed_file(file.filename, ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS):
+        # Generar nombre único
+        file_ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4()}.{file_ext}"
+        
+        # ✅ SOLUCIÓN DEFINITIVA: 
+        # current_app.root_path apunta a donde está app.py (src/)
+        # Necesitamos subir UN nivel para llegar a react-flask-hello/
+        
+        # Obtener directorio donde está app.py
+        app_dir = os.path.abspath(current_app.root_path)
+        print(f"📁 app_dir (current_app.root_path): {app_dir}")
+        
+        # Subir un nivel si estamos en src/
+        if app_dir.endswith('src'):
+            project_root = os.path.dirname(app_dir)
+            print(f"📁 Detectado 'src' en la ruta, subiendo un nivel")
+        else:
+            project_root = app_dir
+            
+        print(f"📁 project_root: {project_root}")
+        
+        upload_dir = os.path.join(project_root, 'uploads', folder)
+        upload_dir = os.path.abspath(upload_dir)
+        
+        # Crear directorio si no existe
+        os.makedirs(upload_dir, exist_ok=True)
+        print(f"📁 upload_dir FINAL: {upload_dir}")
+        
+        # Guardar archivo físicamente
+        file_path = os.path.join(upload_dir, unique_filename)
+        file.save(file_path)
+        print(f"💾 File saved to: {file_path}")
+        
+        # Verificar que se guardó
+        if os.path.exists(file_path):
+            file_size = os.path.getsize(file_path)
+            print(f"✅ File verified! Size: {file_size} bytes")
+        else:
+            print(f"❌ ERROR: File NOT saved: {file_path}")
+            return None
+        
+        # Retornar ruta relativa para la BD
+        return f"/uploads/{folder}/{unique_filename}"
+    return None
+
+
+# =============================================================================
+# UPLOAD DE ARCHIVOS - GUARDAR CON RUTA CORRECTA
+# =============================================================================
+
 @api.route('/admin/upload/<product_id>', methods=['POST'])
 @admin_required
 def upload_media(current_user_id, current_user_role, product_id):
@@ -599,11 +673,16 @@ def upload_media(current_user_id, current_user_role, product_id):
             # Guardar archivo
             file_path = save_uploaded_file(file, folder)
             if file_path:
+                # ✅ CAMBIO: Guardar ruta SIN /api/ al inicio
+                # Formato: /uploads/images/uuid.png
+                
                 # Agregar a la lista correspondiente del producto
                 current_media = getattr(product, media_field, []) or []
                 current_media.append(file_path)
                 setattr(product, media_field, current_media)
                 uploaded_files.append(file_path)
+                
+                print(f"✅ Archivo guardado: {file_path}")
         
         db.session.commit()
         
@@ -615,9 +694,11 @@ def upload_media(current_user_id, current_user_role, product_id):
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error en upload: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': str(e)}), 400
 
-# Endpoint para eliminar archivo multimedia
 @api.route('/admin/upload/<product_id>', methods=['DELETE'])
 @admin_required
 def delete_media(current_user_id, current_user_role, product_id):
@@ -629,7 +710,7 @@ def delete_media(current_user_id, current_user_role, product_id):
         
         data = request.get_json()
         file_path = data.get('file_path')
-        file_type = data.get('type')  # 'image' o 'video'
+        file_type = data.get('type')
         
         if not file_path or not file_type:
             return jsonify({'message': 'Ruta de archivo y tipo requeridos'}), 400
@@ -643,13 +724,22 @@ def delete_media(current_user_id, current_user_role, product_id):
             current_media.remove(file_path)
             setattr(product, media_field, current_media)
             
-            # Opcional: Eliminar archivo físico del servidor
+            # Eliminar archivo físico
             try:
-                physical_path = os.path.join(current_app.root_path, file_path.lstrip('/'))
-                if os.path.exists(physical_path):
-                    os.remove(physical_path)
+                # Construir ruta física correcta
+                current_dir = os.path.dirname(__file__)
+                project_root = os.path.join(current_dir, '..', '..')
+                # file_path es como: /uploads/images/uuid.png
+                # Remover el / inicial
+                relative_path = file_path.lstrip('/')
+                full_physical_path = os.path.join(project_root, relative_path)
+                full_physical_path = os.path.abspath(full_physical_path)
+                
+                if os.path.exists(full_physical_path):
+                    os.remove(full_physical_path)
+                    print(f"✅ Archivo físico eliminado: {full_physical_path}")
             except Exception as e:
-                print(f"Error eliminando archivo físico: {e}")
+                print(f"⚠️ Error eliminando archivo físico: {e}")
         
         db.session.commit()
         
@@ -690,9 +780,9 @@ def reorder_media(current_user_id, current_user_role, product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
-    
+
 # =============================================================================
-# CREAR RESEÑAS ENDPOINTS -
+# CREAR RESEÑAS ENDPOINTS
 # =============================================================================
 
 # Endpoint para crear reseña

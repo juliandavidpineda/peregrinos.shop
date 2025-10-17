@@ -110,3 +110,85 @@ export const productService = {
     return await response.json();
   }
 };
+
+// =============================================================================
+// SISTEMA DE UPLOAD DE ARCHIVOS - NUEVO
+// =============================================================================
+
+export const mediaService = {
+  // Subir archivos (imágenes o videos)
+  async uploadMedia(productId, files) {
+    const token = localStorage.getItem('admin_token');
+    if (!token) throw new Error('No authentication token found');
+
+    const formData = new FormData();
+    Array.from(files).forEach(file => {
+      formData.append('files', file);
+    });
+
+    const response = await fetch(`${API_BASE_URL}/api/admin/upload/${productId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Error uploading files');
+    }
+
+    return await response.json();
+  },
+
+  // Eliminar archivo
+  async deleteMedia(productId, filePath, fileType) {
+    const token = localStorage.getItem('admin_token');
+    if (!token) throw new Error('No authentication token found');
+
+    const response = await fetch(`${API_BASE_URL}/api/admin/upload/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        file_path: filePath,
+        type: fileType // 'image' o 'video'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Error deleting file');
+    }
+
+    return await response.json();
+  },
+
+  // Reordenar archivos
+  async reorderMedia(productId, mediaType, newOrder) {
+    const token = localStorage.getItem('admin_token');
+    if (!token) throw new Error('No authentication token found');
+
+    const response = await fetch(`${API_BASE_URL}/api/admin/upload/${productId}/reorder`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        type: mediaType, // 'images' o 'videos'
+        order: newOrder
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Error reordering files');
+    }
+
+    return await response.json();
+  }
+};

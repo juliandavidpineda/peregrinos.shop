@@ -14,6 +14,7 @@ const AdminProducts = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [formKey, setFormKey] = useState(0); // ✅ Para forzar re-render del form
   const { isAuthenticated, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -68,7 +69,6 @@ const AdminProducts = () => {
     }
 
     try {
-      // ✅ CORRECTO: Sin pasar token
       await productService.deleteProduct(productId);
       await fetchData();
       alert('Producto eliminado exitosamente');
@@ -83,19 +83,35 @@ const AdminProducts = () => {
       console.log('📦 Saving product data:', productData);
       console.log('🔑 Token exists:', !!localStorage.getItem('admin_token'));
       
+      let savedProductResponse;
+      
       if (editingProduct) {
-        // ✅ CORRECTO: Sin pasar token
-        await productService.updateProduct(editingProduct.id, productData);
-        alert('Producto actualizado exitosamente');
+        // ✅ ACTUALIZAR PRODUCTO EXISTENTE
+        savedProductResponse = await productService.updateProduct(editingProduct.id, productData);
+        
+        // ✅ ACTUALIZAR editingProduct con los datos más recientes
+        const updatedProduct = savedProductResponse.product;
+        setEditingProduct(updatedProduct);
+        
+        // ✅ Actualizar la lista de productos SIN cerrar el modal
+        await fetchData();
+        
+        alert('✅ Producto actualizado exitosamente');
+        
       } else {
-        // ✅ CORRECTO: Sin pasar token
-        await productService.createProduct(productData);
-        alert('Producto creado exitosamente');
+        // ✅ CREAR PRODUCTO NUEVO
+        savedProductResponse = await productService.createProduct(productData);
+        const newProduct = savedProductResponse.product;
+        
+        // ✅ Cambiar a modo edición con el producto recién creado
+        setEditingProduct(newProduct);
+        
+        // ✅ Recargar lista
+        await fetchData();
+        
+        alert('✅ Producto creado. Ahora puedes agregar imágenes y videos en la pestaña Multimedia.');
       }
       
-      setShowModal(false);
-      setEditingProduct(null);
-      await fetchData();
     } catch (error) {
       console.error('Error saving product:', error);
       alert(error.message || 'Error al guardar el producto');
