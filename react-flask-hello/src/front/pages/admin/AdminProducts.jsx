@@ -30,29 +30,37 @@ const AdminProducts = () => {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [productsRes, categoriesRes] = await Promise.all([
-        productService.getProducts(),
-        categoryService.getCategories()
-      ]);
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    
+    // ✅ Obtener productos
+    const productsRes = await productService.getProducts();
+    const productsData = productsRes.products || [];
+    console.log('📦 Products data:', productsData);
+    
+    // ✅ Obtener categorías con debug completo
+    console.log('🔄 Fetching categories...');
+    const categoriesRes = await categoryService.getCategories();
+    console.log('📂 Categories response:', categoriesRes);
+    
+    const categoriesData = categoriesRes.categories || [];
+    console.log('🎯 Final categories data:', categoriesData);
+    console.log('🔢 Number of categories:', categoriesData.length);
 
-      const productsData = productsRes.products || [];
-      const categoriesData = categoriesRes.categories || [];
-
-      setProducts(productsData);
-      setFilteredProducts(productsData);
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setProducts([]);
-      setFilteredProducts([]);
-      setCategories([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setProducts(productsData);
+    setFilteredProducts(productsData);
+    setCategories(categoriesData);
+    
+  } catch (error) {
+    console.error('❌ Error fetching data:', error);
+    setProducts([]);
+    setFilteredProducts([]);
+    setCategories([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCreate = () => {
     setEditingProduct(null);
