@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import ProductList from './products/ProductList';
 import ProductForm from './products/ProductForm';
 import ProductFilters from './products/ProductFilters';
+import toast from 'react-hot-toast';
 
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
@@ -71,61 +72,62 @@ const AdminProducts = () => {
     try {
       await productService.deleteProduct(productId);
       await fetchData();
-      alert('Producto eliminado exitosamente');
+      toast.success('Producto eliminado exitosamente');
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert(error.message || 'Error al eliminar el producto');
+      toast.error(error.message || 'Error al eliminar el producto');
     }
   };
 
-  const handleSave = async (productData) => {
-    try {
-      console.log('📦 Saving product data:', productData);
-      console.log('🔑 Token exists:', !!localStorage.getItem('admin_token'));
-
-      let savedProductResponse;
-
-      if (editingProduct) {
-        // ✅ ACTUALIZAR PRODUCTO EXISTENTE
-        savedProductResponse = await productService.updateProduct(editingProduct.id, productData);
-
-        // ✅ Obtener el producto actualizado del servidor
-        const refreshedProduct = await productService.getProductById(editingProduct.id);
-        const updatedProduct = refreshedProduct.product;
-
-        console.log('🔄 Product refreshed from server:', updatedProduct);
-
-        // ✅ ACTUALIZAR editingProduct con los datos más recientes
-        setEditingProduct(updatedProduct);
-        setFormKey(prev => prev + 1); // Forzar re-render del form
-
-        // ✅ Actualizar la lista de productos
-        await fetchData();
-
-        alert('✅ Producto actualizado exitosamente');
-
-      } else {
-        // ✅ CREAR PRODUCTO NUEVO
-        savedProductResponse = await productService.createProduct(productData);
-        const newProduct = savedProductResponse.product;
-
-        console.log('🆕 New product created:', newProduct);
-
-        // ✅ Cambiar a modo edición con el producto recién creado
-        setEditingProduct(newProduct);
-        setFormKey(prev => prev + 1);
-
-        // ✅ Recargar lista
-        await fetchData();
-
-        alert('✅ Producto creado. Ahora puedes agregar imágenes y videos en la pestaña Multimedia.');
-      }
-
-    } catch (error) {
-      console.error('Error saving product:', error);
-      alert(error.message || 'Error al guardar el producto');
+const handleSave = async (productData) => {
+  try {
+    console.log('📦 Saving product data:', productData);
+    console.log('🔑 Token exists:', !!localStorage.getItem('admin_token'));
+    
+    let savedProductResponse;
+    
+    if (editingProduct) {
+      // ✅ ACTUALIZAR PRODUCTO EXISTENTE
+      savedProductResponse = await productService.updateProduct(editingProduct.id, productData);
+      
+      // ✅ Obtener el producto actualizado del servidor
+      const refreshedProduct = await productService.getProductById(editingProduct.id);
+      const updatedProduct = refreshedProduct.product;
+      
+      console.log('🔄 Product refreshed from server:', updatedProduct);
+      
+      // ✅ ACTUALIZAR editingProduct con los datos más recientes
+      setEditingProduct(updatedProduct);
+      setFormKey(prev => prev + 1);
+      
+      // ✅ Actualizar la lista de productos
+      await fetchData();
+      
+      // ❌ QUITAR el cierre automático del modal
+      // toast.success('✅ Producto actualizado correctamente');
+      
+    } else {
+      // ✅ CREAR PRODUCTO NUEVO
+      savedProductResponse = await productService.createProduct(productData);
+      const newProduct = savedProductResponse.product;
+      
+      console.log('🆕 New product created:', newProduct);
+      
+      // ✅ Cambiar a modo edición con el producto recién creado
+      setEditingProduct(newProduct);
+      setFormKey(prev => prev + 1);
+      
+      // ✅ Recargar lista
+      await fetchData();
+      
+      toast.success('✅ Producto creado. Ahora puedes agregar imágenes y videos.');
     }
-  };
+    
+  } catch (error) {
+    console.error('Error saving product:', error);
+    toast.error(error.message || 'Error al guardar el producto');
+  }
+};
 
   const handleFilterChange = (filteredData) => {
     setFilteredProducts(filteredData);

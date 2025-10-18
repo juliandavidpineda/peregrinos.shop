@@ -1,17 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { mediaService } from '../../../services/productService';
 import { getBackendUrl } from '../../../utils/backendConfig';
+import toast from 'react-hot-toast';
 
 const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVideos = [] }) => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [failedImages, setFailedImages] = useState(new Set()); // ✅ Track imágenes fallidas
+  const [failedImages, setFailedImages] = useState(new Set());
 
   const API_BASE_URL = getBackendUrl();
 
-  console.log('🎯 MediaUpload rendered');
-  console.log('📸 Existing images:', existingImages);
-  console.log('🎥 Existing videos:', existingVideos);
+  // ✅ DEFINIR deleteFile PRIMERO con useCallback
+ const deleteFile = useCallback(async (filePath, fileType) => {
+    try {
+      const result = await mediaService.deleteMedia(productId, filePath, fileType);
+      
+      if (result.product && onMediaUpdate) {
+        setFailedImages(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(filePath);
+          return newSet;
+        });
+        
+        onMediaUpdate(result.product);
+      }
+      
+      toast.success('✅ Archivo eliminado correctamente');
+      
+    } catch (error) {
+      toast.error('❌ Error al eliminar archivo: ' + error.message);
+    }
+  }, [productId, onMediaUpdate]);
+
+  // ✅ AHORA definir handleDeleteFile que usa deleteFile
+  const handleDeleteFile = async (filePath, fileType) => {
+    const toastId = toast.custom(
+      (t) => (
+        <div className={`${
+          t.visible ? 'animate-enter' : 'animate-leave'
+        } max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto flex flex-col border border-gray-200`}>
+          <div className="p-4 text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="text-red-600 text-xl">🗑️</span>
+            </div>
+            <p className="text-sm font-medium text-gray-900 mb-2">
+              ¿Eliminar archivo?
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              Esta acción no se puede deshacer
+            </p>
+          </div>
+          <div className="flex border-t border-gray-200">
+            <button
+              onClick={() => toast.dismiss(toastId)}
+              className="flex-1 py-3 text-sm font-medium text-gray-600 hover:text-gray-500 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                toast.dismiss(toastId);
+                deleteFile(filePath, fileType);
+              }}
+              className="flex-1 py-3 text-sm font-medium text-red-600 hover:text-red-500 hover:bg-red-50 transition-colors border-l border-gray-200"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      ),
+      { 
+        duration: Infinity,
+        position: 'top-center'
+      }
+    );
+  };
 
   const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);
@@ -47,58 +110,22 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
       const validFiles = files.filter(file => allowedTypes.includes(file.type));
       
       if (validFiles.length === 0) {
-        alert('Solo se permiten archivos de imagen (JPEG, PNG, WEBP) y video (MP4, MOV, AVI, WEBM)');
+        toast.error('Solo se permiten archivos de imagen (JPEG, PNG, WEBP) y video (MP4, MOV, AVI, WEBM)');
         return;
       }
 
-      console.log('📤 Uploading files:', validFiles.map(f => f.name));
       const result = await mediaService.uploadMedia(productId, validFiles);
       
-      console.log('✅ Upload successful:', result);
-      
       if (result.product && onMediaUpdate) {
-        console.log('📡 Notifying parent after upload');
         onMediaUpdate(result.product);
       }
       
-      alert(`✅ Se subieron ${result.uploaded_files?.length || 0} archivos exitosamente`);
+      toast.success(`✅ Se subieron ${result.uploaded_files?.length || 0} archivos exitosamente`);
       
     } catch (error) {
-      console.error('❌ Error uploading files:', error);
-      alert('❌ Error al subir archivos: ' + error.message);
+      toast.error('❌ Error al subir archivos: ' + error.message);
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleDeleteFile = async (filePath, fileType) => {
-    if (!confirm('¿Estás seguro de eliminar este archivo?')) return;
-
-    try {
-      console.log('🗑️ Deleting file:', filePath, fileType);
-      
-      const result = await mediaService.deleteMedia(productId, filePath, fileType);
-      
-      console.log('✅ Delete successful:', result);
-      
-      if (result.product && onMediaUpdate) {
-        console.log('📡 Calling onMediaUpdate after delete');
-        
-        // ✅ LIMPIAR imágenes fallidas del set
-        setFailedImages(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(filePath);
-          return newSet;
-        });
-        
-        onMediaUpdate(result.product);
-      }
-      
-      alert('✅ Archivo eliminado correctamente');
-      
-    } catch (error) {
-      console.error('❌ Error deleting file:', error);
-      alert('❌ Error al eliminar archivo: ' + error.message);
     }
   };
 
@@ -113,28 +140,19 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
     return fullUrl;
   };
 
-  // ✅ FILTRAR imágenes que sabemos que fallaron
   const getFilteredImages = () => {
     return existingImages.filter(image => !failedImages.has(image));
   };
 
-  // ✅ MANEJAR error de carga de imagen
   const handleImageError = (imagePath) => {
-    console.log('❌ Image failed to load, adding to failed set:', imagePath);
     setFailedImages(prev => new Set(prev).add(imagePath));
   };
 
-  // ✅ USAR imágenes filtradas
   const displayImages = getFilteredImages();
   const displayVideos = existingVideos || [];
-  
-  console.log('🖼️ Filtered images:', displayImages.length, displayImages);
-  console.log('❌ Failed images:', Array.from(failedImages));
-  console.log('🎥 Rendering videos:', displayVideos.length, displayVideos);
 
   return (
     <div className="space-y-6">
-      {/* Área de Upload */}
       <div
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           dragOver 
@@ -178,7 +196,6 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
         </label>
       </div>
 
-      {/* Preview de Imágenes */}
       {displayImages.length > 0 && (
         <div>
           <h4 className="text-md font-semibold text-[#2f4823] mb-3">
@@ -192,9 +209,8 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {displayImages.map((image, index) => {
               const imageUrl = getMediaUrl(image);
-              const isFailed = failedImages.has(image);
               
-              if (isFailed) return null; // ✅ NO RENDERIZAR imágenes fallidas
+              if (failedImages.has(image)) return null;
               
               return (
                 <div key={`img-${index}-${image}`} className="relative group border border-gray-200 rounded-lg overflow-hidden">
@@ -203,7 +219,6 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
                     alt={`Imagen ${index + 1}`}
                     className="w-full h-32 object-cover"
                     onError={() => handleImageError(image)}
-                    onLoad={() => console.log('✅ Image loaded:', imageUrl)}
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center">
                     <button
@@ -224,7 +239,6 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
         </div>
       )}
 
-      {/* Preview de Videos */}
       {displayVideos.length > 0 && (
         <div>
           <h4 className="text-md font-semibold text-[#2f4823] mb-3">
@@ -241,8 +255,6 @@ const MediaUpload = ({ productId, onMediaUpdate, existingImages = [], existingVi
                     className="w-full h-40 object-cover bg-gray-100"
                     controls
                     preload="metadata"
-                    onError={() => console.error('❌ Error loading video:', videoUrl)}
-                    onLoadedData={() => console.log('✅ Video loaded:', videoUrl)}
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center pointer-events-none">
                     <button

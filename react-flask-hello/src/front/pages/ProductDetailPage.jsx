@@ -16,7 +16,8 @@ const ProductDetailPage = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [failedImages, setFailedImages] = useState(new Set()); // ✅ Track imágenes fallidas
+  const [failedImages, setFailedImages] = useState(new Set());
+  const [imageCache, setImageCache] = useState(new Map());
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -24,12 +25,15 @@ const ProductDetailPage = () => {
         setLoading(true);
         setError(null);
         
-        console.log('Cargando producto ID:', productId);
         const response = await productService.getProductById(productId);
-        console.log('Producto cargado desde API:', response);
         
         if (response.product) {
           setProduct(response.product);
+          
+          // Verificar imágenes antes de renderizar
+          if (response.product.images && response.product.images.length > 0) {
+            verifyImages(response.product.images);
+          }
         } else {
           throw new Error('Producto no encontrado');
         }
@@ -47,23 +51,78 @@ const ProductDetailPage = () => {
     }
   }, [productId]);
 
-  // ✅ FILTRAR imágenes que fallaron al cargar
+  // Verificar qué imágenes existen realmente en el servidor
+  const verifyImages = async (images) => {
+    const verifiedCache = new Map();
+    const newFailedImages = new Set();
+
+    // Verificar cada imagen
+    for (const imageUrl of images) {
+      try {
+        const fullUrl = getFullImageUrl(imageUrl);
+        const exists = await checkImageExists(fullUrl);
+        
+        if (exists) {
+          verifiedCache.set(imageUrl, true);
+        } else {
+          verifiedCache.set(imageUrl, false);
+          newFailedImages.add(imageUrl);
+        }
+      } catch (error) {
+        verifiedCache.set(imageUrl, false);
+        newFailedImages.add(imageUrl);
+      }
+    }
+
+    setImageCache(verifiedCache);
+    setFailedImages(newFailedImages);
+  };
+
+  // Verificar si una imagen existe en el servidor
+  const checkImageExists = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
+      
+      // Timeout por si la imagen tarda mucho
+      setTimeout(() => resolve(false), 2000);
+    });
+  };
+
+  // Construir URL completa de imagen
+  const getFullImageUrl = (imagePath) => {
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${API_BASE_URL}/api${cleanPath}`;
+  };
+
+  // Filtrar imágenes - SOLO las que sabemos que existen
   const getValidImages = () => {
     if (!product || !product.images) return [];
     
-    return product.images.filter(image => !failedImages.has(image));
+    return product.images.filter(image => {
+      return imageCache.get(image) !== false && !failedImages.has(image);
+    });
   };
 
-  // ✅ MANEJAR error de carga de imagen
+  // Manejar error de carga de imagen (fallback)
   const handleImageError = (imagePath) => {
-    console.log('❌ Image failed in ProductDetail, adding to failed set:', imagePath);
-    setFailedImages(prev => new Set(prev).add(imagePath));
+    setFailedImages(prev => {
+      const newSet = new Set(prev);
+      newSet.add(imagePath);
+      return newSet;
+    });
     
-    // ✅ Si la imagen seleccionada falla, cambiar a la primera imagen válida
-    const validImages = getValidImages();
-    if (validImages.length > 0 && selectedImage >= validImages.length) {
-      setSelectedImage(0);
-    }
+    // Actualizar cache
+    setImageCache(prev => {
+      const newCache = new Map(prev);
+      newCache.set(imagePath, false);
+      return newCache;
+    });
   };
 
   const handleAddToCart = () => {
@@ -154,10 +213,8 @@ const ProductDetailPage = () => {
     );
   }
 
-  // ✅ OBTENER imágenes válidas
+  // Obtener imágenes válidas
   const validImages = getValidImages();
-  console.log('🖼️ Valid images for display:', validImages);
-  console.log('❌ Failed images:', Array.from(failedImages));
 
   return (
     <div className="min-h-screen bg-[#f7f2e7]">
@@ -169,11 +226,11 @@ const ProductDetailPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-12">
           <ProductImageGallery 
-            images={validImages} // ✅ Usar solo imágenes válidas
+            images={validImages}
             name={product.name}
             selectedImage={selectedImage}
             onImageSelect={setSelectedImage}
-            onImageError={handleImageError} // ✅ Pasar manejador de errores
+            onImageError={handleImageError}
           />
 
           <ProductInfo 

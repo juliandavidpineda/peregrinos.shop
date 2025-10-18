@@ -27,35 +27,31 @@ const ProductForm = ({ product, categories, onSave, onClose, onProductUpdate }) 
   const [errors, setErrors] = useState({});
   const [activeTab, setActiveTab] = useState('basic');
 
-  // En ProductForm.jsx, en el useEffect principal:
-useEffect(() => {
-  if (product) {
-    console.log('🔄 Product changed:', product);
-    console.log('📸 Images loaded:', product.images);
-    
-    setFormData({
-      name: product.name || '',
-      description: product.description || '',
-      price: product.price || '',
-      original_price: product.original_price || '',
-      category_id: product.category_id || '',
-      subcategory: product.subcategory || '',
-      images: product.images || [], // ✅ Siempre usar product.images directamente
-      sizes: product.sizes || ['S', 'M', 'L', 'XL'],
-      features: product.features?.length > 0 ? product.features : [''],
-      stock_quantity: product.stock_quantity || 0,
-      in_stock: product.in_stock ?? true,
-      is_new: product.is_new || false,
-      is_on_sale: product.is_on_sale || false,
-      material: product.material || '',
-      cuidados: product.cuidados || '',
-      origen: product.origen || '',
-      disponibilidad: product.disponibilidad || '',
-      costo_prenda: product.costo_prenda || '',
-      videos: product.videos || [] // ✅ Siempre usar product.videos directamente
-    });
-  }
-}, [product]);
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        name: product.name || '',
+        description: product.description || '',
+        price: product.price || '',
+        original_price: product.original_price || '',
+        category_id: product.category_id || '',
+        subcategory: product.subcategory || '',
+        images: product.images || [],
+        sizes: product.sizes || ['S', 'M', 'L', 'XL'],
+        features: product.features?.length > 0 ? product.features : [''],
+        stock_quantity: product.stock_quantity || 0,
+        in_stock: product.in_stock ?? true,
+        is_new: product.is_new || false,
+        is_on_sale: product.is_on_sale || false,
+        material: product.material || '',
+        cuidados: product.cuidados || '',
+        origen: product.origen || '',
+        disponibilidad: product.disponibilidad || '',
+        costo_prenda: product.costo_prenda || '',
+        videos: product.videos || []
+      });
+    }
+  }, [product]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -100,22 +96,14 @@ useEffect(() => {
     }));
   };
 
-  // ✅ CORREGIDO: Actualizar multimedia Y notificar al padre
   const handleMediaUpdate = (updatedProduct) => {
-    console.log('🔄 Media updated in ProductForm:', updatedProduct);
-    console.log('📸 New images from server:', updatedProduct.images);
-    console.log('🎥 New videos from server:', updatedProduct.videos);
-    
-    // ✅ ACTUALIZAR formData con los datos del servidor
     setFormData(prev => ({
       ...prev,
       images: updatedProduct.images || [],
       videos: updatedProduct.videos || []
     }));
     
-    // ✅ NOTIFICAR AL PADRE para que actualice editingProduct
     if (onProductUpdate) {
-      console.log('📡 Notifying parent about product update');
       onProductUpdate(updatedProduct);
     }
   };
@@ -147,7 +135,6 @@ useEffect(() => {
       return;
     }
 
-    // ✅ IMPORTANTE: Usar formData.images actualizado por MediaUpload
     const cleanData = {
       ...formData,
       price: parseFloat(formData.price),
@@ -155,19 +142,15 @@ useEffect(() => {
       stock_quantity: parseInt(formData.stock_quantity) || 0,
       costo_prenda: formData.costo_prenda ? parseFloat(formData.costo_prenda) : null,
       features: formData.features.filter(f => f.trim()),
-      // ✅ Asegurar que images y videos se envíen correctamente
       images: formData.images || [],
       videos: formData.videos || []
     };
-
-    console.log('📦 Saving product data:', cleanData);
 
     onSave(cleanData);
   };
 
   const renderBasicInfo = () => (
     <div className="space-y-6">
-      {/* Información Básica */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-[#2f4823] border-b border-[#779385]/20 pb-2">
           📝 Información Básica
@@ -238,7 +221,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Categorización */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-[#2f4823] border-b border-[#779385]/20 pb-2">
           📁 Categorización
@@ -281,7 +263,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Tallas */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-[#2f4823] border-b border-[#779385]/20 pb-2">
           👕 Tallas Disponibles
@@ -304,7 +285,6 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* Características */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-[#2f4823] border-b border-[#779385]/20 pb-2">
@@ -340,7 +320,6 @@ useEffect(() => {
         ))}
       </div>
 
-      {/* Inventario */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-[#2f4823] border-b border-[#779385]/20 pb-2">
           📦 Inventario
@@ -521,11 +500,11 @@ useEffect(() => {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col">
         
         {/* Header */}
-        <div className="bg-[#2f4823] text-white p-6 rounded-t-2xl flex justify-between items-center sticky top-0 z-10">
+        <div className="bg-[#2f4823] text-white p-6 rounded-t-2xl flex justify-between items-center shrink-0">
           <h2 className="text-2xl font-bold font-serif">
             {product ? 'Editar Producto' : 'Nuevo Producto'}
           </h2>
@@ -538,7 +517,7 @@ useEffect(() => {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-[#779385]/20">
+        <div className="border-b border-[#779385]/20 shrink-0">
           <div className="flex space-x-1 px-6 pt-4">
             <button
               type="button"
@@ -576,30 +555,32 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(100vh-180px)] overflow-y-auto">
-          
-          {activeTab === 'basic' && renderBasicInfo()}
-          {activeTab === 'details' && renderDetails()}
-          {activeTab === 'media' && renderMedia()}
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {activeTab === 'basic' && renderBasicInfo()}
+            {activeTab === 'details' && renderDetails()}
+            {activeTab === 'media' && renderMedia()}
+          </form>
+        </div>
 
-          {/* Buttons */}
-          <div className="flex gap-3 pt-4 border-t border-[#779385]/20 sticky bottom-0 bg-white pb-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 border border-[#779385] text-[#779385] rounded-lg hover:bg-[#779385]/10 transition-colors font-semibold"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-6 py-3 bg-[#2f4823] text-white rounded-lg hover:bg-[#1f3219] transition-colors font-semibold"
-            >
-              {product ? 'Actualizar Producto' : 'Crear Producto'}
-            </button>
-          </div>
-        </form>
+        {/* Buttons */}
+        <div className="flex gap-3 p-6 border-t border-[#779385]/20 bg-white shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 px-6 py-3 border border-[#779385] text-[#779385] rounded-lg hover:bg-[#779385]/10 transition-colors font-semibold"
+          >
+            Cerrar
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            className="flex-1 px-6 py-3 bg-[#2f4823] text-white rounded-lg hover:bg-[#1f3219] transition-colors font-semibold"
+          >
+            {product ? 'Actualizar Producto' : 'Crear Producto'}
+          </button>
+        </div>
       </div>
     </div>
   );
