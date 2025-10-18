@@ -93,12 +93,14 @@ const ProductDetailPage = () => {
 
   // Construir URL completa de imagen
   const getFullImageUrl = (imagePath) => {
-    if (imagePath.startsWith('http')) return imagePath;
-    
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-    return `${API_BASE_URL}/api${cleanPath}`;
-  };
+  if (!imagePath) return '';
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // ✅ USAR URL BASE FIJA (misma que en MediaUpload)
+  const API_BASE_URL = 'http://localhost:3001';
+  const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${API_BASE_URL}/api${cleanPath}`;
+};
 
   // Filtrar imágenes - SOLO las que sabemos que existen
   const getValidImages = () => {

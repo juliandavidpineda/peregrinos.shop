@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getFirstValidImage, getImageUrl } from '../../utils/imageHelper';
 
 const ProductCard = ({ 
   product, // ✅ Recibir el producto completo como objeto
@@ -31,25 +32,15 @@ const ProductCard = ({
     }).format(price);
   };
 
-  // Función mejorada para obtener imagen
-  const getMainImage = () => {
-    console.log('🖼️ ProductCard - Imágenes para:', name, images);
-    
-    // Verificar si hay imágenes válidas
-    if (images && 
-        Array.isArray(images) && 
-        images.length > 0 && 
-        images[0] && 
-        images[0].trim() !== '') {
-      return images[0];
-    }
-    
-    // Imagen por defecto
-    return 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
-  };
+ const getMainImage = () => {
+  console.log('🖼️ ProductCard - Imágenes para:', name, images);
+  
+  // ✅ USAR EL HELPER que construye la URL completa
+  return getFirstValidImage(images);
+};
 
   const mainImage = getMainImage();
-  const hasRealImage = mainImage !== 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
+  const hasRealImage = mainImage !== getFirstValidImage([]);
 
   const discountPercentage = is_on_sale && original_price 
     ? Math.round(((original_price - price) / original_price) * 100) 

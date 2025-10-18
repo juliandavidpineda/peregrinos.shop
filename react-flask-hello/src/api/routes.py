@@ -374,16 +374,76 @@ def get_top_selling_products():
 
 @api.route('/categories', methods=['GET'])
 def get_categories():
-    """Obtener todas las categorías"""
+    """Obtener todas las categorías - VERSIÓN CON RUTA CORRECTA"""
     try:
-        categories = Category.query.all()
+        import sqlite3
+        import os
+        from flask import jsonify
+        
+        # ✅ RUTA EXACTA ENCONTRADA
+        db_path = r'C:\Users\combm\OneDrive\Escritorio\Códigos\pregrinos.shop\react-flask-hello\instance\peregrinos.db'
+        
+        print(f"🔍 Debug: Using database path: {db_path}")
+        print(f"🔍 Debug: File exists: {os.path.exists(db_path)}")
+        
+        if not os.path.exists(db_path):
+            return jsonify({
+                'success': False,
+                'message': f'Database file not found: {db_path}',
+                'categories': []
+            }), 500
+        
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Verificar que la tabla categories existe
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='categories'")
+        table_exists = cursor.fetchone()
+        
+        if not table_exists:
+            conn.close()
+            return jsonify({
+                'success': False, 
+                'message': 'Categories table does not exist',
+                'categories': []
+            }), 500
+        
+        # Obtener categorías
+        cursor.execute("SELECT id, name, description, image_url, created_at FROM categories ORDER BY name")
+        categories_data = cursor.fetchall()
+        
+        categories = []
+        for row in categories_data:
+            # Contar productos en esta categoría
+            cursor.execute("SELECT COUNT(*) FROM products WHERE category_id = ?", (row[0],))
+            product_count = cursor.fetchone()[0] or 0
+            
+            categories.append({
+                'id': row[0],
+                'name': row[1],
+                'description': row[2] or '',
+                'image_url': row[3] or '',
+                'product_count': product_count,
+                'created_at': row[4]
+            })
+        
+        conn.close()
+        
+        print(f"✅ Debug: Successfully retrieved {len(categories)} categories")
         
         return jsonify({
-            'categories': [category.serialize() for category in categories]
+            'success': True,
+            'categories': categories,
+            'total': len(categories)
         }), 200
         
     except Exception as e:
-        return jsonify({'message': str(e)}), 400
+        print(f"❌ Debug: Error in categories endpoint: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}',
+            'categories': []
+        }), 400
 
 @api.route('/categories', methods=['POST'])
 @admin_required

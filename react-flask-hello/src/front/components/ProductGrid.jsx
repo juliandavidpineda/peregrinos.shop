@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { productService } from '../services/productService';
 import { useCart } from '../context/CartContext';
+import { getFirstValidImage } from '../utils/imageHelper';
 
 export const ProductGrid = () => {
   const navigate = useNavigate();
@@ -25,8 +26,8 @@ export const ProductGrid = () => {
           id: product.id,
           name: product.name,
           price: product.price,
-          image: product.images?.[0] || '/assets/img/products/default-product.webp',
-          description: product.description || 'Producto bendecido • Algodón 100%',
+          image: getFirstValidImage(product.images),
+          description: product.description || 'Producto • Algodón 100%',
           badge: getBadgeByRank(index),
           sizes: product.sizes || ['S', 'M', 'L', 'XL'],
           stock: product.stock || 0,

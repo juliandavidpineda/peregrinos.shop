@@ -26,45 +26,66 @@ const ShopPage = () => {
   const [totalPages, setTotalPages] = useState(1);
 
   // Cargar productos y categorías desde la API
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        productService.getProducts(),
+        categoryService.getCategories()
+      ]);
+      
+      console.log('🛍️ Productos cargados:', productsResponse);
+      console.log('🔍 ShopPage - Datos de productos crudos:', productsResponse.products.map(p => ({
+  id: p.id,
+  name: p.name,
+  images: p.images,
+  hasImages: p.images && p.images.length > 0,
+  imageType: typeof p.images
+})));
+      
+      if (productsResponse.products) {
+        // ✅ PROCESAR IMÁGENES ANTES DE GUARDAR
+        const processedProducts = productsResponse.products.map(product => ({
+          ...product,
+          // Asegurar que images sea un array
+          images: Array.isArray(product.images) ? product.images : [],
+          // Debug: verificar las imágenes
+          _debug_images: product.images
+        }));
         
-        const [productsResponse, categoriesResponse] = await Promise.all([
-          productService.getProducts(),
-          categoryService.getCategories()
-        ]);
+        console.log('🔍 Productos procesados:', processedProducts.map(p => ({
+          name: p.name,
+          images: p.images,
+          hasImages: p.images.length > 0
+        })));
         
-        console.log('Productos cargados desde API:', productsResponse);
-        console.log('Categorías cargadas desde API:', categoriesResponse);
-        
-        if (productsResponse.products) {
-          setProducts(productsResponse.products);
-          setFilteredProducts(productsResponse.products);
-        } else {
-          throw new Error('Formato de respuesta inesperado en productos');
-        }
-
-        if (categoriesResponse.categories) {
-          setCategories(categoriesResponse.categories);
-        } else {
-          throw new Error('Formato de respuesta inesperado en categorías');
-        }
-      } catch (err) {
-        console.error('Error cargando datos:', err);
-        setError('Error al cargar los productos. Por favor, intenta nuevamente.');
-        setProducts([]);
-        setFilteredProducts([]);
-        setCategories([]);
-      } finally {
-        setLoading(false);
+        setProducts(processedProducts);
+        setFilteredProducts(processedProducts);
+      } else {
+        throw new Error('Formato de respuesta inesperado en productos');
       }
-    };
 
-    loadData();
-  }, []);
+      if (categoriesResponse.categories) {
+        setCategories(categoriesResponse.categories);
+      } else {
+        throw new Error('Formato de respuesta inesperado en categorías');
+      }
+    } catch (err) {
+      console.error('Error cargando datos:', err);
+      setError('Error al cargar los productos. Por favor, intenta nuevamente.');
+      setProducts([]);
+      setFilteredProducts([]);
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadData();
+}, []);
 
   // Filtrar productos y calcular paginación
   useEffect(() => {
