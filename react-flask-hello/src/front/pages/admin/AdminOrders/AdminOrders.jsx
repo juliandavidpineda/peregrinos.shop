@@ -77,13 +77,14 @@ const AdminOrders = () => {
         <div>
           <h1 className="text-2xl font-bold text-[#2f4823]">Gestión de Órdenes</h1>
           <p className="text-[#779385] text-sm">
-            Conectado como: {user?.email} • {filteredOrders.length} órdenes mostradas
+            Conectado como: {user?.email} • {orders.length} órdenes totales
           </p>
         </div>
         <button 
           onClick={fetchOrders}
-          className="bg-[#779385] text-white px-4 py-2 rounded hover:bg-[#5a7265] transition-colors"
+          className="bg-[#779385] text-white px-4 py-2 rounded hover:bg-[#5a7265] transition-colors flex items-center gap-2"
         >
+          <span>🔄</span>
           Actualizar
         </button>
       </div>
