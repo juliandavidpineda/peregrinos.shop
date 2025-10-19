@@ -22,7 +22,7 @@ const ProductImageGallery = ({
           <img 
             src={images[selectedImage]} 
             alt={name}
-            className="w-full h-96 object-cover rounded-lg"
+            className="w-full h-96 object-contain bg-white rounded-lg"
             onError={() => handleImageError(images[selectedImage])}
           />
         ) : (
@@ -49,7 +49,7 @@ const ProductImageGallery = ({
               <img 
                 src={image} 
                 alt={`${name} ${index + 1}`}
-                className="w-full h-full object-cover rounded-md"
+                className="w-full h-full object-contain bg-white rounded-md"
                 onError={() => handleImageError(image)}
               />
             </button>

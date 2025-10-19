@@ -81,7 +81,7 @@ const ProductCard = ({
         <img 
           src={mainImage} 
           alt={name} 
-          className={`w-full h-full object-cover transition-transform duration-500 ${
+          className={`w-full h-full object-contain bg-[#f7f2e7] transition-transform duration-500 ${
             isHovered ? 'scale-105' : 'scale-100'
           } ${!in_stock ? 'grayscale' : ''}`}
           onError={(e) => {

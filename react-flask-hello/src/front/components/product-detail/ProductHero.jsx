@@ -23,7 +23,7 @@ const ProductHero = ({ name, onBack }) => {
           <div className="mb-6">
             <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white/90 px-4 py-2 rounded-full text-sm font-semibold border border-white/20">
               <span className="text-amber-200">✞</span>
-              Prenda Bendecida
+              Prenda única
               <span className="text-amber-200">✞</span>
             </span>
           </div>

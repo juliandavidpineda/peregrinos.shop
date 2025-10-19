@@ -237,14 +237,14 @@ export const ProductGrid = () => {
                       <img 
                         src={product.image} 
                         alt={product.name}
-                        className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-80 object-contain bg-[#f7f2e7] group-hover:scale-110 transition-transform duration-500"
                         loading="lazy"
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextElementSibling.style.display = 'flex';
                         }}
                       />
-                      <div className="absolute inset-0 bg-gray-200 flex items-center justify-center hidden">
+                      <div className="absolute inset-0 bg-[#f7f2e7] flex items-center justify-center hidden">
                         <span className="text-gray-400 text-lg">🖼️ {product.name}</span>
                       </div>
                     
