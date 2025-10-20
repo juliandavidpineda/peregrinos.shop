@@ -12,6 +12,7 @@ import TopProducts from './dashboard/TopProducts';
 import Reminders from './dashboard/Reminders';
 import KeyMetrics from './dashboard/KeyMetrics';
 import Notifications from './dashboard/Notifications';
+import ProfitDashboard from './dashboard/ProfitDashboard';
 
 const AdminDashboard = () => {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
@@ -177,9 +178,7 @@ const AdminDashboard = () => {
         onRefresh={refetch}
         error={error}
       />
-
-      <StatsGrid stats={stats} formatPrice={formatPrice} />
-
+        <StatsGrid stats={stats} formatPrice={formatPrice} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <QuickActions onAction={handleQuickAction} />
         <RecentActivity 
@@ -187,6 +186,9 @@ const AdminDashboard = () => {
           formatTimeAgo={formatTimeAgo} 
         />
       </div>
+
+      <ProfitDashboard />
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <SalesChart orders={orders} />

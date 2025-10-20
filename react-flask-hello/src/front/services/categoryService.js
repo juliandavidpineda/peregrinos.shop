@@ -5,8 +5,6 @@ export const categoryService = {
   async getCategories() {
     const response = await apiService.request('/api/categories');
     
-    // ✅ DEBUG: Ver la estructura real de la respuesta
-    console.log('🔍 Raw categories API response:', response);
     
     // ✅ Manejar diferentes estructuras de respuesta
     if (Array.isArray(response)) {

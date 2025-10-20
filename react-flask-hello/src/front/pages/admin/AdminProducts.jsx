@@ -37,16 +37,11 @@ const fetchData = async () => {
     // ✅ Obtener productos
     const productsRes = await productService.getProducts();
     const productsData = productsRes.products || [];
-    console.log('📦 Products data:', productsData);
     
     // ✅ Obtener categorías con debug completo
-    console.log('🔄 Fetching categories...');
     const categoriesRes = await categoryService.getCategories();
-    console.log('📂 Categories response:', categoriesRes);
     
     const categoriesData = categoriesRes.categories || [];
-    console.log('🎯 Final categories data:', categoriesData);
-    console.log('🔢 Number of categories:', categoriesData.length);
 
     setProducts(productsData);
     setFilteredProducts(productsData);
@@ -89,8 +84,6 @@ const fetchData = async () => {
 
 const handleSave = async (productData) => {
   try {
-    console.log('📦 Saving product data:', productData);
-    console.log('🔑 Token exists:', !!localStorage.getItem('admin_token'));
     
     let savedProductResponse;
     
@@ -101,8 +94,6 @@ const handleSave = async (productData) => {
       // ✅ Obtener el producto actualizado del servidor
       const refreshedProduct = await productService.getProductById(editingProduct.id);
       const updatedProduct = refreshedProduct.product;
-      
-      console.log('🔄 Product refreshed from server:', updatedProduct);
       
       // ✅ ACTUALIZAR editingProduct con los datos más recientes
       setEditingProduct(updatedProduct);
@@ -118,8 +109,6 @@ const handleSave = async (productData) => {
       // ✅ CREAR PRODUCTO NUEVO
       savedProductResponse = await productService.createProduct(productData);
       const newProduct = savedProductResponse.product;
-      
-      console.log('🆕 New product created:', newProduct);
       
       // ✅ Cambiar a modo edición con el producto recién creado
       setEditingProduct(newProduct);
@@ -206,8 +195,6 @@ const handleSave = async (productData) => {
           categories={categories}
           onSave={handleSave}
           onProductUpdate={async (updatedProduct) => {
-            console.log('📸 Media change detected:', updatedProduct);
-            console.log('📸 New images from server:', updatedProduct.images);
 
             try {
               // Pequeño delay para asegurar que el servidor procese la eliminación
@@ -216,16 +203,12 @@ const handleSave = async (productData) => {
               const response = await productService.getProductById(updatedProduct.id);
               const freshProduct = response.product;
 
-              console.log('🔄 Product reloaded:', freshProduct);
-              console.log('🔄 Fresh images:', freshProduct.images);
-
               setEditingProduct(freshProduct);
               setFormKey(prev => prev + 1);
 
               fetchData().catch(err => console.error('Error updating list:', err));
 
             } catch (error) {
-              console.error('❌ Error reloading product:', error);
               setEditingProduct(updatedProduct);
               setFormKey(prev => prev + 1);
             }

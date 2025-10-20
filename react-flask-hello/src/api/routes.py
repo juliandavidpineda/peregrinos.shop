@@ -374,76 +374,34 @@ def get_top_selling_products():
 
 @api.route('/categories', methods=['GET'])
 def get_categories():
-    """Obtener todas las categorías - VERSIÓN CON RUTA CORRECTA"""
+    """Obtener todas las categorías"""
     try:
-        import sqlite3
-        import os
-        from flask import jsonify
+        # ✅ USAR SQLAlchemy en lugar de SQL directo
+        categories = Category.query.order_by(Category.name).all()
         
-        # ✅ RUTA EXACTA ENCONTRADA
-        db_path = r'C:\Users\combm\OneDrive\Escritorio\Códigos\pregrinos.shop\react-flask-hello\instance\peregrinos.db'
-        
-        print(f"🔍 Debug: Using database path: {db_path}")
-        print(f"🔍 Debug: File exists: {os.path.exists(db_path)}")
-        
-        if not os.path.exists(db_path):
-            return jsonify({
-                'success': False,
-                'message': f'Database file not found: {db_path}',
-                'categories': []
-            }), 500
-        
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Verificar que la tabla categories existe
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='categories'")
-        table_exists = cursor.fetchone()
-        
-        if not table_exists:
-            conn.close()
-            return jsonify({
-                'success': False, 
-                'message': 'Categories table does not exist',
-                'categories': []
-            }), 500
-        
-        # Obtener categorías
-        cursor.execute("SELECT id, name, description, image_url, created_at FROM categories ORDER BY name")
-        categories_data = cursor.fetchall()
-        
-        categories = []
-        for row in categories_data:
-            # Contar productos en esta categoría
-            cursor.execute("SELECT COUNT(*) FROM products WHERE category_id = ?", (row[0],))
-            product_count = cursor.fetchone()[0] or 0
-            
-            categories.append({
-                'id': row[0],
-                'name': row[1],
-                'description': row[2] or '',
-                'image_url': row[3] or '',
-                'product_count': product_count,
-                'created_at': row[4]
+        categories_data = []
+        for category in categories:
+            categories_data.append({
+                'id': category.id,
+                'name': category.name,
+                'description': category.description or '',
+                'image_url': category.image_url or '',
+                'product_count': len(category.products) if category.products else 0,
+                'created_at': category.created_at.isoformat() if category.created_at else None
             })
-        
-        conn.close()
-        
-        print(f"✅ Debug: Successfully retrieved {len(categories)} categories")
         
         return jsonify({
             'success': True,
-            'categories': categories,
-            'total': len(categories)
+            'categories': categories_data,
+            'total': len(categories_data)
         }), 200
         
     except Exception as e:
-        print(f"❌ Debug: Error in categories endpoint: {e}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}',
             'categories': []
-        }), 400
+        }), 500
 
 @api.route('/categories', methods=['POST'])
 @admin_required
@@ -989,3 +947,202 @@ def update_product_rating(product_id):
     except Exception as e:
         db.session.rollback()
         print(f"Error actualizando rating: {e}")
+
+# =============================================================================
+# ANALYTICS
+# =============================================================================
+
+@api.route('/admin/analytics/profits', methods=['GET'])
+@admin_required
+def get_profit_analytics(current_user_id=None, current_user_role=None):
+    """Obtener análisis de utilidades con filtros avanzados"""
+    try:
+        # Obtener parámetros
+        period = request.args.get('period', 'all')
+        compare = request.args.get('compare', 'false').lower() == 'true'
+        
+        from datetime import datetime, timedelta
+        
+        # Fechas para el periodo actual
+        end_date_current = datetime.now()
+        
+        # Inicializar variables
+        start_date_previous = None
+        end_date_previous = None
+        
+        if period == 'today':
+            start_date_current = end_date_current.replace(hour=0, minute=0, second=0, microsecond=0)
+            if compare:
+                start_date_previous = start_date_current - timedelta(days=1)
+                end_date_previous = start_date_current - timedelta(seconds=1)
+        elif period == 'week':
+            start_date_current = end_date_current - timedelta(days=7)
+            if compare:
+                start_date_previous = start_date_current - timedelta(days=7)
+                end_date_previous = start_date_current - timedelta(seconds=1)
+        elif period == 'month':
+            # Primer día del mes actual
+            start_date_current = end_date_current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if compare:
+                # Para periodo anterior: mes pasado
+                start_date_previous = (start_date_current - timedelta(days=1)).replace(day=1)
+                end_date_previous = start_date_current - timedelta(seconds=1)
+        elif period == '3months':
+            start_date_current = end_date_current - timedelta(days=90)
+            if compare:
+                start_date_previous = start_date_current - timedelta(days=90)
+                end_date_previous = start_date_current - timedelta(seconds=1)
+        else:  # all
+            start_date_current = datetime(2020, 1, 1)  # Fecha muy antigua
+        
+        # Query para periodo actual
+        query_current = Order.query.filter(
+            Order.status.in_(['DELIVERED', 'CONFIRMED']),
+            Order.created_at >= start_date_current,
+            Order.created_at <= end_date_current
+        )
+        
+        completed_orders_current = query_current.all()
+        
+        # Datos del periodo anterior (para comparación)
+        completed_orders_previous = []
+        if compare and start_date_previous:
+            query_previous = Order.query.filter(
+                Order.status.in_(['DELIVERED', 'CONFIRMED']),
+                Order.created_at >= start_date_previous,
+                Order.created_at <= end_date_previous
+            )
+            completed_orders_previous = query_previous.all()
+        
+        # Calcular métricas periodo actual
+        metrics_current = calculate_metrics(completed_orders_current)
+        
+        # Calcular métricas periodo anterior
+        metrics_previous = calculate_metrics(completed_orders_previous) if compare and completed_orders_previous else None
+        
+        # Datos para gráfico de tendencias (últimas 12 semanas)
+        weekly_trends = get_weekly_trends()
+        
+        return jsonify({
+            'success': True,
+            'metrics': metrics_current,
+            'comparison': metrics_previous,
+            'weekly_trends': weekly_trends,
+            'period': period,
+            'compare': compare
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def calculate_metrics(orders):
+    """Calcular métricas para un conjunto de órdenes"""
+    total_revenue = 0
+    total_cost = 0
+    product_profits = {}
+    
+    for order in orders:
+        total_revenue += order.total if order.total else 0
+        
+        for item in order.items:
+            product = Product.query.get(item.product_id)
+            if product and product.costo_prenda:
+                item_cost = product.costo_prenda * item.quantity
+                item_revenue = item.price * item.quantity
+                
+                total_cost += item_cost
+                
+                if product.id not in product_profits:
+                    product_profits[product.id] = {
+                        'name': product.name,
+                        'total_revenue': 0,
+                        'total_cost': 0,
+                        'total_quantity': 0
+                    }
+                
+                product_profits[product.id]['total_revenue'] += item_revenue
+                product_profits[product.id]['total_cost'] += item_cost
+                product_profits[product.id]['total_quantity'] += item.quantity
+
+    # Calcular márgenes
+    gross_profit = total_revenue - total_cost
+    profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
+
+    for product_id, data in product_profits.items():
+        product_profit = data['total_revenue'] - data['total_cost']
+        data['total_profit'] = product_profit
+        data['margin'] = (product_profit / data['total_revenue'] * 100) if data['total_revenue'] > 0 else 0
+
+    top_products = sorted(
+        product_profits.values(),
+        key=lambda x: x['total_profit'],
+        reverse=True
+    )[:10]
+
+    return {
+        'total_revenue': total_revenue,
+        'total_cost': total_cost,
+        'gross_profit': gross_profit,
+        'profit_margin': round(profit_margin, 2),
+        'total_orders': len(orders),
+        'avg_order_value': total_revenue / len(orders) if orders else 0,
+        'top_products': top_products
+    }
+
+def get_weekly_trends():
+    """Obtener tendencias semanales de los últimos 3 meses INCLUYENDO semana actual"""
+    from datetime import datetime, timedelta
+    
+    weekly_data = []
+    end_date = datetime.now()
+    
+    # Últimos 3 meses INCLUYENDO la semana actual
+    start_date = end_date - timedelta(days=84)  # 12 semanas = 3 meses
+
+    # Primera semana comience en lunes
+    days_since_monday = start_date.weekday()  # 0 = lunes, 6 = domingo
+    adjusted_start_date = start_date - timedelta(days=days_since_monday)
+    
+    current_date = adjusted_start_date
+    week_count = 0
+    
+    while current_date <= end_date and week_count < 13:  # 13 semanas para incluir completa
+        week_start = current_date
+        week_end = current_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        
+        week_orders = Order.query.filter(
+            Order.status.in_(['DELIVERED', 'CONFIRMED']),
+            Order.created_at.between(week_start, week_end)
+        ).all()
+        
+        week_revenue = sum(order.total for order in week_orders if order.total)
+        week_cost = 0
+        
+        for order in week_orders:
+            for item in order.items:
+                product = Product.query.get(item.product_id)
+                if product and product.costo_prenda:
+                    week_cost += product.costo_prenda * item.quantity
+        
+        week_profit = week_revenue - week_cost
+        week_margin = (week_profit / week_revenue * 100) if week_revenue > 0 else 0
+        
+        # Determinar si es la semana actual
+        is_current_week = end_date >= week_start and end_date <= week_end
+        
+        weekly_data.append({
+            'week': week_start.strftime('%d/%m'),
+            'revenue': week_revenue,
+            'profit': week_profit,
+            'margin': round(week_margin, 2),
+            'orders': len(week_orders),
+            'week_start': week_start.isoformat(),
+            'week_end': week_end.isoformat(),
+            'is_current_week': is_current_week,
+            'has_data': len(week_orders) > 0
+        })
+        
+        current_date += timedelta(days=7)
+        week_count += 1
+    
+    return weekly_data

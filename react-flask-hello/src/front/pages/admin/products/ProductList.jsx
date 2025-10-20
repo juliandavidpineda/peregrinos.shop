@@ -31,7 +31,7 @@ const ProductList = ({ products, loading, onEdit, onDelete }) => {
                 Producto
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Precio
+                Precios
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Stock
@@ -46,13 +46,6 @@ const ProductList = ({ products, loading, onEdit, onDelete }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {products.map((product) => {
-              // ✅ AQUÍ VAN LOS LOGS - DENTRO DEL MAP
-              console.log('🔄 ADMIN LIST - Product:', product.name);
-              console.log('🔄 ADMIN LIST - Images array:', product.images);
-              console.log('🔄 ADMIN LIST - First image:', product.images?.[0]);
-              console.log('🔄 ADMIN LIST - Built URL:', getImageUrl(product.images?.[0]));
-              console.log('🔄 ADMIN LIST - Full product data:', product);
-              
               return (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -63,7 +56,6 @@ const ProductList = ({ products, loading, onEdit, onDelete }) => {
                           src={getImageUrl(product.images?.[0])}
                           alt={product.name}
                           onError={(e) => {
-                            console.log('❌ Image failed to load for:', product.name);
                             e.target.src = getImageUrl(''); 
                           }}
                         />
