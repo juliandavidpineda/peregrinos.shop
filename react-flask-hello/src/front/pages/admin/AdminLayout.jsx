@@ -24,6 +24,7 @@ const AdminLayout = () => {
       { path: '/admin/products', label: 'Productos', icon: '👕', show: true },
       { path: '/admin/categories', label: 'Categorías', icon: '📁', show: true },
       { path: '/admin/orders', label: 'Pedidos', icon: '📦', show: true },
+      { path: '/admin/reviews', label: 'Reseñas', icon: '⭐', show: true }, // ✅ NUEVA OPCIÓN
       { path: '/admin/users', label: 'Usuarios', icon: '👥', show: isSuperAdmin() },
     ];
 

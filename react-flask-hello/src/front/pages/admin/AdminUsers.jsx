@@ -5,16 +5,30 @@ import UserFilters from '../../components/admin/users/UserFilters';
 import UserList from '../../components/admin/users/UserList';
 import UserForm from '../../components/admin/users/UserForm';
 import ProfileModal from '../../components/admin/users/ProfileModal';
+import ActivityLogs from '../../components/admin/users/ActivityLogs';
+import LogsFilters from '../../components/admin/users/LogsFilters';
 
 const AdminUsers = () => {
   const { isSuperAdmin, user: currentUser } = useAuth();
   
   // Estados para datos
   const [users, setUsers] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('users'); // 'users' o 'logs'
+
+  // Estados para paginación
   const [pagination, setPagination] = useState({
     page: 1,
     per_page: 10,
+    total: 0,
+    pages: 0
+  });
+
+  const [logsPagination, setLogsPagination] = useState({
+    page: 1,
+    per_page: 20,
     total: 0,
     pages: 0
   });
@@ -24,6 +38,12 @@ const AdminUsers = () => {
     search: '',
     role: '',
     is_active: '',
+    page: 1
+  });
+
+  const [logsFilters, setLogsFilters] = useState({
+    search: '',
+    action: '',
     page: 1
   });
 
@@ -58,12 +78,38 @@ const AdminUsers = () => {
     }
   };
 
-  // Efecto para cargar usuarios cuando cambian los filtros
-  useEffect(() => {
-    loadUsers();
-  }, [filters, isSuperAdmin]);
+  // Cargar logs de actividad
+  const loadActivityLogs = async () => {
+    if (!isSuperAdmin()) return;
+    
+    setLogsLoading(true);
+    try {
+      const response = await userService.getActivityLogs(logsFilters.page, logsFilters.per_page);
+      setLogs(response.logs);
+      setLogsPagination({
+        page: response.current_page,
+        per_page: logsFilters.per_page || 20,
+        total: response.total,
+        pages: response.pages
+      });
+    } catch (error) {
+      console.error('Error loading activity logs:', error);
+      setMessage('Error al cargar los logs de actividad');
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
-  // Manejar cambio de filtros
+  // Efecto para cargar datos según la pestaña activa
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers();
+    } else if (activeTab === 'logs') {
+      loadActivityLogs();
+    }
+  }, [filters, logsFilters, activeTab, isSuperAdmin]);
+
+  // Manejar cambio de filtros de usuarios
   const handleFiltersChange = (filterName, value) => {
     setFilters(prev => ({
       ...prev,
@@ -72,7 +118,16 @@ const AdminUsers = () => {
     }));
   };
 
-  // Limpiar filtros
+  // Manejar cambio de filtros de logs
+  const handleLogsFiltersChange = (filterName, value) => {
+    setLogsFilters(prev => ({
+      ...prev,
+      [filterName]: value,
+      page: 1
+    }));
+  };
+
+  // Limpiar filtros de usuarios
   const handleClearFilters = () => {
     setFilters({
       search: '',
@@ -82,13 +137,32 @@ const AdminUsers = () => {
     });
   };
 
-  // Manejar paginación
+  // Limpiar filtros de logs
+  const handleClearLogsFilters = () => {
+    setLogsFilters({
+      search: '',
+      action: '',
+      page: 1
+    });
+  };
+
+  // Manejar paginación de usuarios
   const handlePageChange = (newPage) => {
     setFilters(prev => ({
       ...prev,
       page: newPage
     }));
   };
+
+  // Manejar paginación de logs
+  const handleLogsPageChange = (newPage) => {
+    setLogsFilters(prev => ({
+      ...prev,
+      page: newPage
+    }));
+  };
+
+  // === FUNCIONES DE GESTIÓN DE USUARIOS ===
 
   // Mostrar formulario para crear usuario
   const handleCreateUser = () => {
@@ -180,7 +254,7 @@ const AdminUsers = () => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gestión de Usuarios Admin</h1>
-          <p className="text-gray-600">Administra los usuarios con acceso al panel de administración</p>
+          <p className="text-gray-600">Administra usuarios y visualiza actividad del sistema</p>
         </div>
         <div className="flex space-x-3">
           <button
@@ -189,12 +263,14 @@ const AdminUsers = () => {
           >
             Mi Perfil
           </button>
-          <button
-            onClick={handleCreateUser}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Crear Usuario
-          </button>
+          {activeTab === 'users' && (
+            <button
+              onClick={handleCreateUser}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Crear Usuario
+            </button>
+          )}
         </div>
       </div>
 
@@ -215,71 +291,145 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* Filtros */}
-      <UserFilters
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onClearFilters={handleClearFilters}
-      />
-
-      {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-gray-900">{pagination.total}</div>
-          <div className="text-gray-600">Total Usuarios</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-blue-600">
-            {users.filter(u => u.role === 'superadmin').length}
-          </div>
-          <div className="text-gray-600">Super Admins</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-green-600">
-            {users.filter(u => u.is_active).length}
-          </div>
-          <div className="text-gray-600">Usuarios Activos</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-orange-600">
-            {users.filter(u => !u.is_active).length}
-          </div>
-          <div className="text-gray-600">Usuarios Inactivos</div>
-        </div>
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'users'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Gestión de Usuarios
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'logs'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Logs de Actividad
+          </button>
+        </nav>
       </div>
 
-      {/* Lista de Usuarios */}
-      <UserList
-        users={users}
-        loading={loading}
-        onEdit={handleEditUser}
-        onDelete={handleDeleteUser}
-        onToggleStatus={handleToggleStatus}
-      />
+      {/* Contenido según pestaña activa */}
+      {activeTab === 'users' ? (
+        <>
+          {/* Filtros de usuarios */}
+          <UserFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onClearFilters={handleClearFilters}
+          />
 
-      {/* Paginación */}
-      {pagination.pages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-6">
-          <button
-            onClick={() => handlePageChange(pagination.page - 1)}
-            disabled={pagination.page === 1}
-            className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Anterior
-          </button>
-          
-          <span className="text-sm text-gray-700">
-            Página {pagination.page} de {pagination.pages}
-          </span>
-          
-          <button
-            onClick={() => handlePageChange(pagination.page + 1)}
-            disabled={pagination.page === pagination.pages}
-            className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Siguiente
-          </button>
-        </div>
+          {/* Estadísticas de usuarios */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-gray-900">{pagination.total}</div>
+              <div className="text-gray-600">Total Usuarios</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-blue-600">
+                {users.filter(u => u.role === 'superadmin').length}
+              </div>
+              <div className="text-gray-600">Super Admins</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-green-600">
+                {users.filter(u => u.is_active).length}
+              </div>
+              <div className="text-gray-600">Usuarios Activos</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-orange-600">
+                {users.filter(u => !u.is_active).length}
+              </div>
+              <div className="text-gray-600">Usuarios Inactivos</div>
+            </div>
+          </div>
+
+          {/* Lista de Usuarios */}
+          <UserList
+            users={users}
+            loading={loading}
+            onEdit={handleEditUser}
+            onDelete={handleDeleteUser}
+            onToggleStatus={handleToggleStatus}
+          />
+
+          {/* Paginación de usuarios */}
+          {pagination.pages > 1 && (
+            <div className="flex justify-center items-center space-x-2 mt-6">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Anterior
+              </button>
+              
+              <span className="text-sm text-gray-700">
+                Página {pagination.page} de {pagination.pages}
+              </span>
+              
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="px-3 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Filtros de logs */}
+          <LogsFilters
+            filters={logsFilters}
+            onFiltersChange={handleLogsFiltersChange}
+            onClearFilters={handleClearLogsFilters}
+          />
+
+          {/* Estadísticas de logs */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-gray-900">{logsPagination.total}</div>
+              <div className="text-gray-600">Total Registros</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-blue-600">
+                {logs.filter(log => log.action.includes('user_updated')).length}
+              </div>
+              <div className="text-gray-600">Actualizaciones</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-green-600">
+                {logs.filter(log => log.action === 'user_created').length}
+              </div>
+              <div className="text-gray-600">Usuarios Creados</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow">
+              <div className="text-2xl font-bold text-red-600">
+                {logs.filter(log => log.action === 'user_deleted').length}
+              </div>
+              <div className="text-gray-600">Usuarios Eliminados</div>
+            </div>
+          </div>
+
+          {/* Lista de Logs */}
+          <ActivityLogs
+            logs={logs}
+            loading={logsLoading}
+            pagination={logsPagination}
+            onPageChange={handleLogsPageChange}
+          />
+        </>
       )}
 
       {/* Modal de Formulario de Usuario */}

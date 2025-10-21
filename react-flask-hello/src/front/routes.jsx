@@ -1,8 +1,8 @@
 // Import necessary components and functions from react-router-dom.
 import {
-    createBrowserRouter,
-    createRoutesFromElements,
-    Route,
+  createBrowserRouter,
+  createRoutesFromElements,
+  Route,
 } from "react-router-dom";
 import { Layout } from "./pages/Layout";
 import { Home } from "./pages/Home";
@@ -26,57 +26,63 @@ import AdminCategories from "./pages/admin/AdminCategories";
 import AdminOrders from "./pages/admin/AdminOrders/AdminOrders";
 // IMPORTAR NUEVA RUTA
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminReviews from "./pages/admin/AdminReviews";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter(
-    createRoutesFromElements(
-      // Envolver todas las rutas en un fragmento
-      <>
-        {/* Ruta principal con Layout */}
-        <Route path="/" element={<Layout />} errorElement={<h1>Not found!</h1>} >
-          <Route path= "/" element={<Home />} />
-          <Route path="/single/:theId" element={ <Single />} />
-          <Route path="/demo" element={<Demo />} />
-          <Route path="/shop-page" element={ <ShopPage />} />
-          <Route path="/product/:productId" element={<ProductDetailPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="checkout" element={<CheckoutPage />} />
-          <Route path="order-confirmation" element={<OrderConfirmation /> } />
-          <Route path="/santoral" element={<SantoralPage /> } />
-          <Route path="/contact" element={<ContactPage /> } />
-          <Route path="about" element={<AboutPage /> } />
-        </Route>
+  createRoutesFromElements(
+    // Envolver todas las rutas en un fragmento
+    <>
+      {/* Ruta principal con Layout */}
+      <Route path="/" element={<Layout />} errorElement={<h1>Not found!</h1>} >
+        <Route path="/" element={<Home />} />
+        <Route path="/single/:theId" element={<Single />} />
+        <Route path="/demo" element={<Demo />} />
+        <Route path="/shop-page" element={<ShopPage />} />
+        <Route path="/product/:productId" element={<ProductDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="checkout" element={<CheckoutPage />} />
+        <Route path="order-confirmation" element={<OrderConfirmation />} />
+        <Route path="/santoral" element={<SantoralPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="about" element={<AboutPage />} />
+      </Route>
 
-        {/* Rutas del Panel Administrativo */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route path="login" element={<AdminLogin />} />
-          <Route path="dashboard" element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="products" element={
-            <ProtectedRoute>
-              <AdminProducts />
-            </ProtectedRoute>
-          } />
-          <Route path="categories" element={
-            <ProtectedRoute>
-              <AdminCategories />
-            </ProtectedRoute>
-          } />
-          <Route path="orders" element={
-            <ProtectedRoute>
-              <AdminOrders />
-            </ProtectedRoute>
-          } />
-          {/* AGREGAR NUEVA RUTA DE USUARIOS CON PROTECCIÓN DE ROL */}
-          <Route path="users" element={
-            <ProtectedRoute requiredRole="superadmin">
-              <AdminUsers />
-            </ProtectedRoute>
-          } />
-        </Route>
-      </>
-    )
+      {/* Rutas del Panel Administrativo */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route path="login" element={<AdminLogin />} />
+        <Route path="dashboard" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="products" element={
+          <ProtectedRoute>
+            <AdminProducts />
+          </ProtectedRoute>
+        } />
+        <Route path="categories" element={
+          <ProtectedRoute>
+            <AdminCategories />
+          </ProtectedRoute>
+        } />
+        <Route path="orders" element={
+          <ProtectedRoute>
+            <AdminOrders />
+          </ProtectedRoute>
+        } />
+        {/* AGREGAR NUEVA RUTA DE USUARIOS CON PROTECCIÓN DE ROL */}
+        <Route path="users" element={
+          <ProtectedRoute requiredRole="superadmin">
+            <AdminUsers />
+          </ProtectedRoute>
+        } />
+        <Route path="reviews" element={
+          <ProtectedRoute allowedRoles={['editor', 'content_manager', 'superadmin']}>
+            <AdminReviews />
+          </ProtectedRoute>
+        } />
+      </Route>
+    </>
+  )
 );

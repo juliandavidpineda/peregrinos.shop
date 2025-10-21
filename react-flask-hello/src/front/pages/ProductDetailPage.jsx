@@ -5,35 +5,45 @@ import ProductImageGallery from '../components/product-detail/ProductImageGaller
 import ProductInfo from '../components/product-detail/ProductInfo';
 import ProductDescription from '../components/product-detail/ProductDescription';
 import RelatedProducts from '../components/product-detail/RelatedProducts';
+import ReviewForm from '../components/reviews/ReviewForm';
+import ReviewListPublic from '../components/reviews/ReviewListPublic';
 import { productService } from '../services/productService';
+import { reviewService } from '../services/reviewService';
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [failedImages, setFailedImages] = useState(new Set());
   const [imageCache, setImageCache] = useState(new Map());
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   useEffect(() => {
-    const loadProduct = async () => {
+    const loadProductData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await productService.getProductById(productId);
+        // Cargar producto
+        const productResponse = await productService.getProductById(productId);
         
-        if (response.product) {
-          setProduct(response.product);
+        if (productResponse.product) {
+          setProduct(productResponse.product);
           
           // Verificar imágenes antes de renderizar
-          if (response.product.images && response.product.images.length > 0) {
-            verifyImages(response.product.images);
+          if (productResponse.product.images && productResponse.product.images.length > 0) {
+            verifyImages(productResponse.product.images);
           }
+
+          // Cargar reseñas del producto
+          await loadProductReviews(productId);
         } else {
           throw new Error('Producto no encontrado');
         }
@@ -47,9 +57,44 @@ const ProductDetailPage = () => {
     };
 
     if (productId) {
-      loadProduct();
+      loadProductData();
     }
   }, [productId]);
+
+  // Cargar reseñas del producto
+  const loadProductReviews = async (productId) => {
+    try {
+      setReviewsLoading(true);
+      const response = await reviewService.getProductReviews(productId);
+      setReviews(response.reviews || []);
+    } catch (error) {
+      console.error('Error cargando reseñas:', error);
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  // Manejar envío de nueva reseña
+  const handleSubmitReview = async (reviewData) => {
+    try {
+      await reviewService.createReview(productId, reviewData);
+      
+      // Recargar reseñas
+      await loadProductReviews(productId);
+      
+      // Ocultar formulario
+      setShowReviewForm(false);
+      
+      // Mostrar mensaje de éxito
+      alert('¡Gracias por tu reseña! Será revisada antes de publicarse.');
+      
+    } catch (error) {
+      console.error('Error enviando reseña:', error);
+      alert('Error al enviar la reseña. Por favor, intenta nuevamente.');
+      throw error; // Re-lanzar para que el formulario maneje el error
+    }
+  };
 
   // Verificar qué imágenes existen realmente en el servidor
   const verifyImages = async (images) => {
@@ -93,14 +138,14 @@ const ProductDetailPage = () => {
 
   // Construir URL completa de imagen
   const getFullImageUrl = (imagePath) => {
-  if (!imagePath) return '';
-  if (imagePath.startsWith('http')) return imagePath;
-  
-  // ✅ USAR URL BASE FIJA (misma que en MediaUpload)
-  const API_BASE_URL = 'http://localhost:3001';
-  const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-  return `${API_BASE_URL}/api${cleanPath}`;
-};
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // ✅ USAR URL BASE FIJA (misma que en MediaUpload)
+    const API_BASE_URL = 'http://localhost:3001';
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+    return `${API_BASE_URL}/api${cleanPath}`;
+  };
 
   // Filtrar imágenes - SOLO las que sabemos que existen
   const getValidImages = () => {
@@ -247,6 +292,58 @@ const ProductDetailPage = () => {
         </div>
 
         <ProductDescription product={product} />
+
+        {/* SECCIÓN DE RESEÑAS */}
+        <section className="mb-12">
+          <div className="max-w-4xl mx-auto">
+            {/* Header de reseñas */}
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <h2 className="font-serif font-bold text-2xl text-[#2f4823] mb-2">
+                  Reseñas de Clientes
+                </h2>
+                <div className="flex items-center gap-4 text-[#779385]">
+                  <span className="flex items-center gap-1">
+                    <span className="text-2xl">⭐</span>
+                    <span className="font-semibold">{product.rating || 0}</span>
+                    <span>/5</span>
+                  </span>
+                  <span>•</span>
+                  <span>{reviews.length} reseña{reviews.length !== 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              
+              {/* Botón para agregar reseña */}
+              <button
+                onClick={() => setShowReviewForm(!showReviewForm)}
+                className="bg-[#2f4823] text-white px-6 py-3 rounded-lg hover:bg-[#1f3219] transition-colors font-medium"
+              >
+                {showReviewForm ? 'Cancelar' : 'Escribir Reseña'}
+              </button>
+            </div>
+
+            {/* Formulario de reseña (condicional) */}
+            {showReviewForm && (
+              <div className="mb-8">
+                <ReviewForm 
+                  productId={productId}
+                  onSubmit={handleSubmitReview}
+                  onCancel={() => setShowReviewForm(false)}
+                />
+              </div>
+            )}
+
+            {/* Lista de reseñas */}
+            {reviewsLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2f4823] mx-auto"></div>
+                <p className="mt-4 text-[#779385]">Cargando reseñas...</p>
+              </div>
+            ) : (
+              <ReviewListPublic reviews={reviews} />
+            )}
+          </div>
+        </section>
 
         <RelatedProducts 
           currentProduct={product}

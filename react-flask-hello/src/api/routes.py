@@ -76,21 +76,12 @@ def admin_login():
         admin = AdminUser.query.filter_by(email=email).first()
         
         if admin:
-            print("🔧 USUARIO ENCONTRADO:")
-            print(f"🔧   Email: {admin.email}")
-            print(f"🔧   Activo: {admin.is_active}")
-            print(f"🔧   Password hash: {admin.password_hash[:50]}...")
-            
-            print("🔧 VERIFICANDO CONTRASEÑA...")
             password_valid = admin.check_password(password)
-            print(f"🔧 CONTRASEÑA VÁLIDA: {password_valid}")
             
             if not password_valid:
-                print("🔧 CONTRASEÑA INCORRECTA")
                 return jsonify({'message': 'Invalid credentials'}), 401
             
             if not admin.is_active:
-                print("🔧 USUARIO INACTIVO")
                 return jsonify({'message': 'Account is disabled'}), 401
             
             # Actualizar último login
@@ -99,7 +90,6 @@ def admin_login():
             
             # Generar token
             token = generate_token(admin.id, admin.role)
-            print("🔧 TOKEN GENERADO")
             
             return jsonify({
                 'message': 'Login successful',
@@ -107,7 +97,6 @@ def admin_login():
                 'admin': admin.serialize()
             }), 200
         else:
-            print("🔧 USUARIO NO ENCONTRADO")
             return jsonify({'message': 'Invalid credentials'}), 401
         
     except Exception as e:
@@ -234,15 +223,12 @@ def get_admin_user(current_user_id, current_user_role, user_id):
 @api.route('/admin/users', methods=['POST'])
 @admin_required
 def create_admin_user(current_user_id, current_user_role):
-    try:
-        print("🔧 INICIANDO CREACIÓN DE USUARIO")
-        
+    try:        
         # Solo superadmin puede crear usuarios
         if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Unauthorized'}), 403
         
         data = request.get_json()
-        print("🔧 DATOS RECIBIDOS:", data)
         
         # Validaciones básicas
         required_fields = ['email', 'password', 'first_name', 'last_name', 'role']
@@ -251,17 +237,15 @@ def create_admin_user(current_user_id, current_user_role):
                 return jsonify({'message': f'Field {field} is required'}), 400
         
         # Verificar si el email ya existe
-        print("🔧 VERIFICANDO EMAIL EXISTENTE...")
         existing_user = AdminUser.query.filter_by(email=data.get('email')).first()
         if existing_user:
             print("🔧 EMAIL YA EXISTE:", existing_user.email)
             return jsonify({'message': 'Email already registered'}), 400
-        print("🔧 EMAIL DISPONIBLE")
+        
         
         # CORRECCIÓN: Usar string directamente, NO Enum
         role_from_request = data.get('role')
-        print("🔧 ROLE FROM REQUEST:", role_from_request)
-        
+
         # Validar que el rol sea válido
         valid_roles = ['superadmin', 'editor', 'content_manager']
         if role_from_request not in valid_roles:
@@ -280,16 +264,10 @@ def create_admin_user(current_user_id, current_user_role):
         )
         new_user.set_password(data.get('password'))
         
-        print("🔧 OBJETO CREADO:", new_user)
-        print("🔧 ROLE DEL OBJETO:", new_user.role)
-        print("🔧 TIPO DEL ROLE:", type(new_user.role))
-        
-        print("🔧 AGREGANDO A SESSION...")
         db.session.add(new_user)
         
-        print("🔧 HACIENDO COMMIT...")
         db.session.commit()
-        print("🔧 COMMIT EXITOSO!")
+      
         
         return jsonify({
             'message': 'Admin user created successfully',
@@ -1271,6 +1249,37 @@ def reorder_media(current_user_id, current_user_role, product_id):
 # CREAR RESEÑAS ENDPOINTS
 # =============================================================================
 
+# Endpoint para listar reviews pendientes (admin)
+@api.route('/admin/reviews', methods=['GET'])
+@admin_required
+def get_admin_reviews(current_user_id, current_user_role):  # ✅ CAMBIÉ EL NOMBRE
+    """Obtener todas las reseñas para moderación"""
+    try:
+        status = request.args.get('status', 'all')  # all, pending, approved
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        
+        query = Review.query
+        
+        if status == 'pending':
+            query = query.filter_by(is_approved=False)
+        elif status == 'approved':
+            query = query.filter_by(is_approved=True)
+        
+        reviews = query.order_by(Review.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'reviews': [review.serialize() for review in reviews.items],
+            'total': reviews.total,
+            'pages': reviews.pages,
+            'current_page': page
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
 # Endpoint para crear reseña
 @api.route('/products/<product_id>/reviews', methods=['POST'])
 def create_review(product_id):
@@ -1323,6 +1332,63 @@ def get_product_reviews(product_id):
         }), 200
         
     except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
+# Endpoint para listar reviews pendientes (admin)    
+@api.route('/admin/reviews', methods=['GET'])
+@admin_required
+def get_reviews_admin(current_user_id, current_user_role):
+    """Obtener todas las reseñas para moderación"""
+    try:
+        status = request.args.get('status', 'all')  # all, pending, approved
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        
+        query = Review.query
+        
+        if status == 'pending':
+            query = query.filter_by(is_approved=False)
+        elif status == 'approved':
+            query = query.filter_by(is_approved=True)
+        
+        reviews = query.order_by(Review.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'reviews': [review.serialize() for review in reviews.items],
+            'total': reviews.total,
+            'pages': reviews.pages,
+            'current_page': page
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+
+# Endpoint para eliminar review (solo content_manager+)
+@api.route('/admin/reviews/<review_id>', methods=['DELETE'])
+@admin_required  
+def delete_review(current_user_id, current_user_role, review_id):
+    """Eliminar reseña (solo content_manager y superadmin)"""
+    try:
+        if current_user_role not in ['content_manager', 'superadmin']:
+            return jsonify({'message': 'No autorizado'}), 403
+            
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({'message': 'Reseña no encontrada'}), 404
+        
+        product_id = review.product_id
+        db.session.delete(review)
+        db.session.commit()
+        
+        # Actualizar rating del producto
+        update_product_rating(product_id)
+        
+        return jsonify({'message': 'Reseña eliminada correctamente'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
 # Endpoint para moderar reseñas (admin)
@@ -1449,14 +1515,14 @@ def get_profit_analytics(current_user_id=None, current_user_role=None):
             )
             completed_orders_previous = query_previous.all()
         
-        # Calcular métricas periodo actual
-        metrics_current = calculate_metrics(completed_orders_current)
+        # Calcular métricas periodo actual - CON FILTRO POR ROL
+        metrics_current = calculate_metrics(completed_orders_current, current_user_role)
         
-        # Calcular métricas periodo anterior
-        metrics_previous = calculate_metrics(completed_orders_previous) if compare and completed_orders_previous else None
+        # Calcular métricas periodo anterior - CON FILTRO POR ROL
+        metrics_previous = calculate_metrics(completed_orders_previous, current_user_role) if compare and completed_orders_previous else None
         
-        # Datos para gráfico de tendencias (últimas 12 semanas)
-        weekly_trends = get_weekly_trends()
+        # Datos para gráfico de tendencias (últimas 12 semanas) - CON FILTRO POR ROL
+        weekly_trends = get_weekly_trends(current_user_role)
         
         return jsonify({
             'success': True,
@@ -1464,14 +1530,15 @@ def get_profit_analytics(current_user_id=None, current_user_role=None):
             'comparison': metrics_previous,
             'weekly_trends': weekly_trends,
             'period': period,
-            'compare': compare
+            'compare': compare,
+            'user_role': current_user_role  # Para debug en frontend
         })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-def calculate_metrics(orders):
-    """Calcular métricas para un conjunto de órdenes"""
+def calculate_metrics(orders, user_role=None):
+    """Calcular métricas para un conjunto de órdenes - FILTRADO POR ROL"""
     total_revenue = 0
     total_cost = 0
     product_profits = {}
@@ -1479,53 +1546,81 @@ def calculate_metrics(orders):
     for order in orders:
         total_revenue += order.total if order.total else 0
         
-        for item in order.items:
-            product = Product.query.get(item.product_id)
-            if product and product.costo_prenda:
-                item_cost = product.costo_prenda * item.quantity
-                item_revenue = item.price * item.quantity
-                
-                total_cost += item_cost
-                
-                if product.id not in product_profits:
-                    product_profits[product.id] = {
-                        'name': product.name,
-                        'total_revenue': 0,
-                        'total_cost': 0,
-                        'total_quantity': 0
-                    }
-                
-                product_profits[product.id]['total_revenue'] += item_revenue
-                product_profits[product.id]['total_cost'] += item_cost
-                product_profits[product.id]['total_quantity'] += item.quantity
+        # Solo calcular costos si es SuperAdmin
+        if user_role and user_role.lower() == 'superadmin':
+            for item in order.items:
+                product = Product.query.get(item.product_id)
+                if product and product.costo_prenda:
+                    item_cost = product.costo_prenda * item.quantity
+                    item_revenue = item.price * item.quantity
+                    
+                    total_cost += item_cost
+                    
+                    if product.id not in product_profits:
+                        product_profits[product.id] = {
+                            'name': product.name,
+                            'total_revenue': 0,
+                            'total_cost': 0,
+                            'total_quantity': 0
+                        }
+                    
+                    product_profits[product.id]['total_revenue'] += item_revenue
+                    product_profits[product.id]['total_cost'] += item_cost
+                    product_profits[product.id]['total_quantity'] += item.quantity
+        else:
+            # Para roles no-SuperAdmin, solo contar cantidades
+            for item in order.items:
+                product = Product.query.get(item.product_id)
+                if product:
+                    if product.id not in product_profits:
+                        product_profits[product.id] = {
+                            'name': product.name,
+                            'total_revenue': 0,
+                            'total_cost': 0,
+                            'total_quantity': 0
+                        }
+                    
+                    product_profits[product.id]['total_revenue'] += item.price * item.quantity
+                    product_profits[product.id]['total_quantity'] += item.quantity
 
-    # Calcular márgenes
-    gross_profit = total_revenue - total_cost
-    profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
+    # Calcular márgenes SOLO para SuperAdmin
+    if user_role and user_role.lower() == 'superadmin':
+        gross_profit = total_revenue - total_cost
+        profit_margin = (gross_profit / total_revenue * 100) if total_revenue > 0 else 0
 
-    for product_id, data in product_profits.items():
-        product_profit = data['total_revenue'] - data['total_cost']
-        data['total_profit'] = product_profit
-        data['margin'] = (product_profit / data['total_revenue'] * 100) if data['total_revenue'] > 0 else 0
+        for product_id, data in product_profits.items():
+            product_profit = data['total_revenue'] - data['total_cost']
+            data['total_profit'] = product_profit
+            data['margin'] = (product_profit / data['total_revenue'] * 100) if data['total_revenue'] > 0 else 0
+    else:
+        # Para roles no-SuperAdmin, ocultar datos financieros sensibles
+        gross_profit = 0
+        profit_margin = 0
+        total_cost = 0
+        
+        for product_id, data in product_profits.items():
+            data['total_profit'] = 0  # Ocultar ganancias
+            data['margin'] = 0  # Ocultar márgenes
 
     top_products = sorted(
         product_profits.values(),
-        key=lambda x: x['total_profit'],
+        key=lambda x: x['total_quantity'],  # Ordenar por cantidad vendida en lugar de ganancias
         reverse=True
     )[:10]
 
     return {
-        'total_revenue': total_revenue,
-        'total_cost': total_cost,
-        'gross_profit': gross_profit,
-        'profit_margin': round(profit_margin, 2),
+        'total_revenue': total_revenue if user_role and user_role.lower() == 'superadmin' else 0,
+        'total_cost': total_cost if user_role and user_role.lower() == 'superadmin' else 0,
+        'gross_profit': gross_profit if user_role and user_role.lower() == 'superadmin' else 0,
+        'profit_margin': round(profit_margin, 2) if user_role and user_role.lower() == 'superadmin' else 0,
         'total_orders': len(orders),
         'avg_order_value': total_revenue / len(orders) if orders else 0,
-        'top_products': top_products
+        'top_products': top_products,
+        'total_products_sold': sum(item['total_quantity'] for item in product_profits.values())
     }
 
-def get_weekly_trends():
-    """Obtener tendencias semanales de los últimos 3 meses INCLUYENDO semana actual"""
+def get_weekly_trends(user_role=None):
+    """Obtener tendencias semanales de los últimos 3 meses - FILTRADO POR ROL"""
     from datetime import datetime, timedelta
     
     weekly_data = []
@@ -1551,25 +1646,32 @@ def get_weekly_trends():
         ).all()
         
         week_revenue = sum(order.total for order in week_orders if order.total)
-        week_cost = 0
         
-        for order in week_orders:
-            for item in order.items:
-                product = Product.query.get(item.product_id)
-                if product and product.costo_prenda:
-                    week_cost += product.costo_prenda * item.quantity
-        
-        week_profit = week_revenue - week_cost
-        week_margin = (week_profit / week_revenue * 100) if week_revenue > 0 else 0
+        # Solo calcular costos si es SuperAdmin
+        if user_role and user_role.lower() == 'superadmin':
+            week_cost = 0
+            for order in week_orders:
+                for item in order.items:
+                    product = Product.query.get(item.product_id)
+                    if product and product.costo_prenda:
+                        week_cost += product.costo_prenda * item.quantity
+            
+            week_profit = week_revenue - week_cost
+            week_margin = (week_profit / week_revenue * 100) if week_revenue > 0 else 0
+        else:
+            # Para roles no-SuperAdmin, ocultar datos financieros
+            week_cost = 0
+            week_profit = 0
+            week_margin = 0
         
         # Determinar si es la semana actual
         is_current_week = end_date >= week_start and end_date <= week_end
         
         weekly_data.append({
             'week': week_start.strftime('%d/%m'),
-            'revenue': week_revenue,
-            'profit': week_profit,
-            'margin': round(week_margin, 2),
+            'revenue': week_revenue if user_role and user_role.lower() == 'superadmin' else 0,
+            'profit': week_profit if user_role and user_role.lower() == 'superadmin' else 0,
+            'margin': round(week_margin, 2) if user_role and user_role.lower() == 'superadmin' else 0,
             'orders': len(week_orders),
             'week_start': week_start.isoformat(),
             'week_end': week_end.isoformat(),

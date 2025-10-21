@@ -1,6 +1,9 @@
 import React from 'react';
+import { useAuth } from '../../../context/AuthContext';
 
 const TopProducts = ({ products, orders }) => {
+  const { isSuperAdmin } = useAuth();
+
   const getTopProducts = () => {
     const productSales = {};
     
@@ -36,7 +39,9 @@ const TopProducts = ({ products, orders }) => {
   if (!topProducts.length) {
     return (
       <section className="bg-white rounded-2xl shadow-sm border border-[#779385]/20 p-6">
-        <h2 className="font-serif font-bold text-xl text-[#2f4823] mb-4">Productos Más Vendidos</h2>
+        <h2 className="font-serif font-bold text-xl text-[#2f4823] mb-4">
+          {isSuperAdmin() ? 'Productos Más Vendidos' : 'Productos Populares'}
+        </h2>
         <div className="text-center py-8 text-[#779385]">
           <div className="text-4xl mb-2">🎯</div>
           <p>No hay datos de ventas</p>
@@ -48,7 +53,9 @@ const TopProducts = ({ products, orders }) => {
 
   return (
     <section className="bg-white rounded-2xl shadow-sm border border-[#779385]/20 p-6">
-      <h2 className="font-serif font-bold text-xl text-[#2f4823] mb-4">Productos Más Vendidos</h2>
+      <h2 className="font-serif font-bold text-xl text-[#2f4823] mb-4">
+        {isSuperAdmin() ? 'Productos Más Vendidos' : 'Productos Populares'}
+      </h2>
       
       <div className="space-y-4">
         {topProducts.map((item, index) => (
@@ -68,8 +75,15 @@ const TopProducts = ({ products, orders }) => {
               </div>
             </div>
             <div className="text-right">
-              <p className="font-semibold text-[#2f4823]">{formatPrice(item.revenue)}</p>
-              <p className="text-xs text-[#779385]">Ingresos</p>
+              <p className="font-semibold text-[#2f4823]">
+                {isSuperAdmin() 
+                  ? formatPrice(item.revenue)
+                  : `${item.quantity} unidades`
+                }
+              </p>
+              <p className="text-xs text-[#779385]">
+                {isSuperAdmin() ? 'Ingresos' : 'Total Vendido'}
+              </p>
             </div>
           </article>
         ))}
