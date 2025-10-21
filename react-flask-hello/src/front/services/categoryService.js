@@ -5,8 +5,6 @@ export const categoryService = {
   async getCategories() {
     const response = await apiService.request('/api/categories');
     
-    
-    // ✅ Manejar diferentes estructuras de respuesta
     if (Array.isArray(response)) {
       return { categories: response };
     } else if (response && response.categories) {
@@ -14,17 +12,36 @@ export const categoryService = {
     } else if (response && response.data) {
       return { categories: response.data };
     } else {
-      // ✅ Fallback seguro
-      console.warn('⚠️ Unexpected categories response structure:', response);
       return { categories: [] };
     }
   },
 
   // Crear categoría (admin)
   async createCategory(categoryData) {
-    return apiService.authenticatedRequest('/api/categories', {
+    return apiService.authenticatedRequest('/api/admin/categories', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', // ✅ AGREGAR ESTO
+      },
       body: JSON.stringify(categoryData),
+    });
+  },
+
+  // Actualizar categoría (admin)
+  async updateCategory(categoryId, categoryData) {
+    return apiService.authenticatedRequest(`/api/admin/categories/${categoryId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json', // ✅ AGREGAR ESTO
+      },
+      body: JSON.stringify(categoryData),
+    });
+  },
+
+  // Eliminar categoría (admin)
+  async deleteCategory(categoryId) {
+    return apiService.authenticatedRequest(`/api/admin/categories/${categoryId}`, {
+      method: 'DELETE',
     });
   }
 };

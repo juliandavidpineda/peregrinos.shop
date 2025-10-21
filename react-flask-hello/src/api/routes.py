@@ -376,7 +376,6 @@ def get_top_selling_products():
 def get_categories():
     """Obtener todas las categorías"""
     try:
-        # ✅ USAR SQLAlchemy en lugar de SQL directo
         categories = Category.query.order_by(Category.name).all()
         
         categories_data = []
@@ -403,37 +402,108 @@ def get_categories():
             'categories': []
         }), 500
 
-@api.route('/categories', methods=['POST'])
+@api.route('/admin/categories', methods=['POST'])
 @admin_required
-def create_category(current_user_id, current_user_role):
+def create_category(current_user_id=None, current_user_role=None):
     """Crear nueva categoría"""
     try:
         data = request.get_json()
         
         if not data.get('name'):
-            return jsonify({'message': 'Category name is required'}), 400
+            return jsonify({'success': False, 'message': 'El nombre de la categoría es requerido'}), 400
         
         # Verificar si ya existe
-        if Category.query.filter_by(name=data['name']).first():
-            return jsonify({'message': 'Category already exists'}), 400
+        existing_category = Category.query.filter_by(name=data['name']).first()
+        if existing_category:
+            return jsonify({'success': False, 'message': 'Ya existe una categoría con este nombre'}), 400
         
         category = Category(
             name=data['name'],
-            description=data.get('description'),
-            image_url=data.get('image_url')
+            description=data.get('description', ''),
+            image_url=data.get('image_url', '')
         )
         
         db.session.add(category)
         db.session.commit()
         
         return jsonify({
-            'message': 'Category created successfully',
+            'success': True,
+            'message': 'Categoría creada exitosamente',
             'category': category.serialize()
         }), 201
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': str(e)}), 400
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api.route('/admin/categories/<category_id>', methods=['PUT'])
+@admin_required
+def update_category(current_user_id=None, current_user_role=None, category_id=None):
+    """Actualizar categoría existente"""
+    try:
+        data = request.get_json()
+        category = Category.query.get(category_id)
+        
+        if not category:
+            return jsonify({'success': False, 'message': 'Categoría no encontrada'}), 404
+        
+        # Verificar nombre único (excluyendo la categoría actual)
+        if data.get('name'):
+            existing = Category.query.filter(
+                Category.name == data['name'],
+                Category.id != category_id
+            ).first()
+            if existing:
+                return jsonify({'success': False, 'message': 'Ya existe otra categoría con este nombre'}), 400
+            
+            category.name = data['name']
+        
+        if 'description' in data:
+            category.description = data['description']
+        if 'image_url' in data:
+            category.image_url = data['image_url']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Categoría actualizada exitosamente',
+            'category': category.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@api.route('/admin/categories/<category_id>', methods=['DELETE'])
+@admin_required
+def delete_category(current_user_id=None, current_user_role=None, category_id=None):
+    """Eliminar categoría"""
+    try:
+        category = Category.query.get(category_id)
+        
+        if not category:
+            return jsonify({'success': False, 'message': 'Categoría no encontrada'}), 404
+        
+        # Verificar si hay productos en esta categoría
+        product_count = len(category.products) if category.products else 0
+        if product_count > 0:
+            return jsonify({
+                'success': False, 
+                'message': f'No se puede eliminar la categoría. Tiene {product_count} producto(s) asociado(s)'
+            }), 400
+        
+        db.session.delete(category)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Categoría eliminada exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
     
 
 # =============================================================================
