@@ -24,6 +24,8 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminOrders from "./pages/admin/AdminOrders/AdminOrders";
+// IMPORTAR NUEVA RUTA
+import AdminUsers from "./pages/admin/AdminUsers";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter(
@@ -66,6 +68,12 @@ export const router = createBrowserRouter(
           <Route path="orders" element={
             <ProtectedRoute>
               <AdminOrders />
+            </ProtectedRoute>
+          } />
+          {/* AGREGAR NUEVA RUTA DE USUARIOS CON PROTECCIÓN DE ROL */}
+          <Route path="users" element={
+            <ProtectedRoute requiredRole="superadmin">
+              <AdminUsers />
             </ProtectedRoute>
           } />
         </Route>

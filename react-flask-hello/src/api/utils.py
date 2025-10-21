@@ -79,13 +79,17 @@ def token_required(f):
             return jsonify({'message': 'Token is missing'}), 401
         
         try:
-            # Remover 'Bearer ' del token
             if token.startswith('Bearer '):
                 token = token[7:]
             
             data = jwt.decode(token, os.getenv('FLASK_APP_KEY'), algorithms=['HS256'])
             current_user_id = data['sub']
             current_user_role = data['role']
+
+            print(f"🔧 [token_required] User ID: {current_user_id}")
+            print(f"🔧 [token_required] Role from token: [{current_user_role}]")
+            print(f"🔧 [token_required] Role type: {type(current_user_role)}")
+
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired'}), 401
         except jwt.InvalidTokenError:
@@ -102,7 +106,7 @@ def admin_required(f):
     @wraps(f)
     @token_required
     def decorated(current_user_id, current_user_role, *args, **kwargs):
-        if current_user_role not in ['superadmin', 'editor', 'content_manager']:
+        if current_user_role.lower() not in ['superadmin', 'editor', 'content_manager']:
             return jsonify({'message': 'Admin access required'}), 403
         return f(current_user_id, current_user_role, *args, **kwargs)
     
@@ -115,7 +119,7 @@ def superadmin_required(f):
     @wraps(f)
     @token_required
     def decorated(current_user_id, current_user_role, *args, **kwargs):
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Superadmin access required'}), 403
         return f(current_user_id, current_user_role, *args, **kwargs)
     

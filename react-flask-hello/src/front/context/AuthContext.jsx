@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { userService } from '../services/userService';
 
 // Crear el contexto
 const AuthContext = createContext();
@@ -65,18 +66,63 @@ export const AuthProvider = ({ children }) => {
 
   // Verificar si tiene rol de admin
   const hasRole = (role) => {
-    if (!user) return false;
-    return user.role === role;
-  };
+  if (!user) return false;
+  return user.role?.toLowerCase() === role.toLowerCase();
+};
 
   // Verificar si es superadmin
   const isSuperAdmin = () => {
-    return hasRole('superadmin');
-  };
+  if (!user) return false;
+  return user.role?.toLowerCase() === 'superadmin';
+};
 
   // Verificar si es admin (cualquier rol)
   const isAdmin = () => {
     return isAuthenticated && user && ['superadmin', 'editor', 'content_manager'].includes(user.role);
+  };
+
+  // 🔄 NUEVAS FUNCIONES AGREGADAS
+  const refreshUser = async () => {
+    try {
+      const token = authService.getToken();
+      const currentUser = authService.getCurrentUser();
+      if (token && currentUser) {
+        // Podríamos hacer una llamada al API para obtener datos frescos
+        // Por ahora actualizamos con los datos de localStorage
+        setUser(currentUser);
+        setIsAuthenticated(true);
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+    }
+  };
+
+  const updateUserProfile = async (userData) => {
+    try {
+      const response = await userService.updateOwnProfile(userData);
+      if (response.user) {
+        setUser(response.user);
+        localStorage.setItem('admin_user', JSON.stringify(response.user));
+        return { success: true, data: response };
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.message || 'Error updating profile' 
+      };
+    }
+  };
+
+  const changePassword = async (newPassword) => {
+    try {
+      const response = await userService.changeOwnPassword(newPassword);
+      return { success: true, data: response };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.message || 'Error changing password' 
+      };
+    }
   };
 
   const value = {
@@ -88,7 +134,11 @@ export const AuthProvider = ({ children }) => {
     hasRole,
     isSuperAdmin,
     isAdmin,
-    checkAuth
+    checkAuth,
+    // 🔄 NUEVAS FUNCIONES
+    refreshUser,
+    updateUserProfile,
+    changePassword
   };
 
   return (

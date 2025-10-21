@@ -4,10 +4,12 @@ export const authService = {
   // Login de administrador
   async adminLogin(email, password) {
     try {
+         console.log("🔧 INTENTANDO LOGIN:", email);
       const response = await apiService.request('/api/admin/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+       console.log("🔧 RESPUESTA LOGIN:", response);
 
       if (response.token) {
         localStorage.setItem('admin_token', response.token);

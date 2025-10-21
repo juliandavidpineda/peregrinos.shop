@@ -2,7 +2,7 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directory  # ✅ AGREGAR send_from_directory
-from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review  # ✅ AGREGAR Review
+from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum 
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
 import datetime
@@ -30,7 +30,7 @@ def handle_hello():
     return jsonify(response_body), 200
 
 # =============================================================================
-# ADMIN AUTH ENDPOINTS - NUEVOS ENDPOINTS AGREGADOS
+# ADMIN AUTH ENDPOINTS 
 # =============================================================================
 
 @api.route('/admin/register', methods=['POST'])
@@ -65,55 +65,429 @@ def admin_register():
 @api.route('/admin/login', methods=['POST'])
 def admin_login():
     try:
+        print("🔧 === INICIANDO LOGIN ===")
         data = request.get_json()
-        admin = AdminUser.query.filter_by(email=data.get('email')).first()
+        print("🔧 DATOS LOGIN:", data)
         
-        if not admin or not admin.check_password(data.get('password')):
+        email = data.get('email')
+        password = data.get('password')
+        
+        print("🔧 BUSCANDO USUARIO:", email)
+        admin = AdminUser.query.filter_by(email=email).first()
+        
+        if admin:
+            print("🔧 USUARIO ENCONTRADO:")
+            print(f"🔧   Email: {admin.email}")
+            print(f"🔧   Activo: {admin.is_active}")
+            print(f"🔧   Password hash: {admin.password_hash[:50]}...")
+            
+            print("🔧 VERIFICANDO CONTRASEÑA...")
+            password_valid = admin.check_password(password)
+            print(f"🔧 CONTRASEÑA VÁLIDA: {password_valid}")
+            
+            if not password_valid:
+                print("🔧 CONTRASEÑA INCORRECTA")
+                return jsonify({'message': 'Invalid credentials'}), 401
+            
+            if not admin.is_active:
+                print("🔧 USUARIO INACTIVO")
+                return jsonify({'message': 'Account is disabled'}), 401
+            
+            # Actualizar último login
+            admin.last_login = datetime.datetime.utcnow()
+            db.session.commit()
+            
+            # Generar token
+            token = generate_token(admin.id, admin.role)
+            print("🔧 TOKEN GENERADO")
+            
+            return jsonify({
+                'message': 'Login successful',
+                'token': token,
+                'admin': admin.serialize()
+            }), 200
+        else:
+            print("🔧 USUARIO NO ENCONTRADO")
             return jsonify({'message': 'Invalid credentials'}), 401
         
-        if not admin.is_active:
-            return jsonify({'message': 'Account is disabled'}), 401
+    except Exception as e:
+        print("🔧 ERROR EN LOGIN:", str(e))
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': str(e)}), 400
+
+# =============================================================================
+# FUNCIÓN HELPER PARA LOGS - AGREGAR ESTO
+# =============================================================================
+def log_admin_activity(admin_user_id, action, description, request=None):
+    """Función helper para registrar actividad de admin"""
+    try:
+        log = UserActivityLog(
+            admin_user_id=admin_user_id,
+            action=action,
+            description=description,
+            ip_address=request.remote_addr if request else None,
+            user_agent=request.headers.get('User-Agent') if request else None
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error logging activity: {e}")
+        # No hacemos rollback de la transacción principal por un error en el log
+
+# =============================================================================
+# ADMIN USER MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@api.route('/admin/users', methods=['GET'])
+@admin_required
+def get_admin_users(current_user_id, current_user_role):
+    """Obtener lista de usuarios admin con filtros"""
+    try:
+        print("🔧 === INICIANDO LISTADO DE USUARIOS ===")
         
-        # Actualizar último login
-        admin.last_login = datetime.datetime.utcnow()
+        # Solo superadmin puede ver todos los usuarios
+        if current_user_role != 'superadmin':
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        # Parámetros de filtro
+        role_filter = request.args.get('role')
+        status_filter = request.args.get('is_active')
+        search = request.args.get('search')
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 10))
+        
+        print("🔧 FILTROS:", {
+            'role': role_filter,
+            'is_active': status_filter, 
+            'search': search,
+            'page': page,
+            'per_page': per_page
+        })
+        
+        # Construir query base
+        query = AdminUser.query
+        
+        # Aplicar filtros - CORREGIR LÓGICA DE is_active
+        if role_filter:
+            query = query.filter_by(role=role_filter)
+        
+        # CORRECCIÓN: Solo aplicar filtro si se especifica explícitamente
+        if status_filter and status_filter != '':
+            is_active = status_filter.lower() == 'true'
+            query = query.filter_by(is_active=is_active)
+            print(f"🔧 FILTRO is_active APLICADO: {is_active}")
+        else:
+            print("🔧 SIN FILTRO is_active")
+        
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    AdminUser.email.ilike(search_term),
+                    AdminUser.first_name.ilike(search_term),
+                    AdminUser.last_name.ilike(search_term)
+                )
+            )
+        
+        print("🔧 QUERY FINAL:")
+        total_before_pagination = query.count()
+        print(f"🔧   Total usuarios: {total_before_pagination}")
+        
+        # Paginación
+        users = query.order_by(AdminUser.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        print("🔧 RESULTADO:")
+        print(f"🔧   Página {users.page} de {users.pages}")
+        print(f"🔧   Total: {users.total}")
+        print(f"🔧   Usuarios en página: {len(users.items)}")
+        
+        for user in users.items:
+            print(f"🔧   - {user.email} (activo: {user.is_active})")
+        
+        return jsonify({
+            'users': [user.serialize() for user in users.items],
+            'total': users.total,
+            'pages': users.pages,
+            'current_page': page
+        }), 200
+        
+    except Exception as e:
+        print("🔧 ERROR EN LISTADO:", str(e))
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': str(e)}), 400
+    
+@api.route('/admin/users/<user_id>', methods=['GET'])
+@admin_required
+def get_admin_user(current_user_id, current_user_role, user_id):
+    """Obtener un usuario admin específico"""
+    try:
+        # Solo superadmin puede ver otros usuarios, o el propio usuario viéndose a sí mismo
+        if current_user_role != 'superadmin' and current_user_id != user_id:
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        user = AdminUser.query.get(user_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        return jsonify({
+            'user': user.serialize()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 400
+    
+@api.route('/admin/users', methods=['POST'])
+@admin_required
+def create_admin_user(current_user_id, current_user_role):
+    try:
+        print("🔧 INICIANDO CREACIÓN DE USUARIO")
+        
+        # Solo superadmin puede crear usuarios
+        if current_user_role != 'superadmin':
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        print("🔧 DATOS RECIBIDOS:", data)
+        
+        # Validaciones básicas
+        required_fields = ['email', 'password', 'first_name', 'last_name', 'role']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'message': f'Field {field} is required'}), 400
+        
+        # Verificar si el email ya existe
+        print("🔧 VERIFICANDO EMAIL EXISTENTE...")
+        existing_user = AdminUser.query.filter_by(email=data.get('email')).first()
+        if existing_user:
+            print("🔧 EMAIL YA EXISTE:", existing_user.email)
+            return jsonify({'message': 'Email already registered'}), 400
+        print("🔧 EMAIL DISPONIBLE")
+        
+        # CORRECCIÓN: Usar string directamente, NO Enum
+        role_from_request = data.get('role')
+        print("🔧 ROLE FROM REQUEST:", role_from_request)
+        
+        # Validar que el rol sea válido
+        valid_roles = ['superadmin', 'editor', 'content_manager']
+        if role_from_request not in valid_roles:
+            print("🔧 ROL INVÁLIDO:", role_from_request)
+            return jsonify({'message': 'Invalid role'}), 400
+        
+        print("🔧 ROL VÁLIDO, CREANDO USUARIO...")
+        
+        # Crear nuevo usuario - USAR STRING DIRECTAMENTE
+        new_user = AdminUser(
+            email=data.get('email'),
+            first_name=data.get('first_name'),
+            last_name=data.get('last_name'),
+            role=role_from_request,  # ← STRING, NO ENUM
+            is_active=data.get('is_active', True)
+        )
+        new_user.set_password(data.get('password'))
+        
+        print("🔧 OBJETO CREADO:", new_user)
+        print("🔧 ROLE DEL OBJETO:", new_user.role)
+        print("🔧 TIPO DEL ROLE:", type(new_user.role))
+        
+        print("🔧 AGREGANDO A SESSION...")
+        db.session.add(new_user)
+        
+        print("🔧 HACIENDO COMMIT...")
+        db.session.commit()
+        print("🔧 COMMIT EXITOSO!")
+        
+        return jsonify({
+            'message': 'Admin user created successfully',
+            'user': new_user.serialize()
+        }), 201
+        
+    except Exception as e:
+        print("🔧 ERROR EN create_admin_user:", str(e))
+        import traceback
+        traceback.print_exc()
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+    
+@api.route('/admin/users/<user_id>', methods=['PUT'])
+@admin_required
+def update_admin_user(current_user_id, current_user_role, user_id):
+    """Actualizar usuario admin"""
+    try:
+        user = AdminUser.query.get(user_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        data = request.get_json()
+        
+        # Permisos: superadmin puede editar cualquier usuario, otros solo su propio perfil
+        if current_user_role != 'superadmin' and current_user_id != user_id:
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        # Restricciones para no-superadmin
+        if current_user_role != 'superadmin':
+            # No puede cambiar rol
+            if 'role' in data:
+                return jsonify({'message': 'Cannot change role'}), 403
+            # No puede desactivar cuenta
+            if 'is_active' in data:
+                return jsonify({'message': 'Cannot change activation status'}), 403
+        
+        # Campos permitidos para actualizar
+        if 'email' in data and data['email'] != user.email:
+            # Verificar si nuevo email ya existe
+            if AdminUser.query.filter_by(email=data['email']).first():
+                return jsonify({'message': 'Email already registered'}), 400
+            user.email = data['email']
+        
+        if 'first_name' in data:
+            user.first_name = data['first_name']
+        
+        if 'last_name' in data:
+            user.last_name = data['last_name']
+        
+        # Solo superadmin puede cambiar estos campos
+        if current_user_role == 'superadmin':
+            if 'role' in data:
+                valid_roles = ['superadmin', 'editor', 'content_manager']
+                if data['role'] not in valid_roles:
+                    return jsonify({'message': 'Invalid role'}), 400
+                user.role = data['role']
+            
+            if 'is_active' in data:
+                user.is_active = data['is_active']
+        
+        # Actualizar contraseña si se proporciona
+        if 'password' in data and data['password']:
+            user.set_password(data['password'])
+        
+        user.updated_at = func.now()
         db.session.commit()
         
-        # Generar token
-        token = generate_token(admin.id, admin.role.value)
+        # Registrar actividad
+        action = 'user_updated_self' if current_user_id == user_id else 'user_updated'
+        log_admin_activity(
+            current_user_id,
+            action,
+            f'Updated admin user: {user.email}',
+            request
+        )
         
         return jsonify({
-            'message': 'Login successful',
-            'token': token,
-            'admin': admin.serialize()
+            'message': 'User updated successfully',
+            'user': user.serialize()
         }), 200
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-@api.route('/admin/me', methods=['GET'])
+@api.route('/admin/users/<user_id>', methods=['DELETE'])
 @admin_required
-def admin_profile(current_user_id, current_user_role):
+def delete_admin_user(current_user_id, current_user_role, user_id):
+    """Eliminar usuario admin (solo superadmin)"""
     try:
-        admin = AdminUser.query.get(current_user_id)
-        if not admin:
-            return jsonify({'message': 'Admin not found'}), 404
+        # Solo superadmin puede eliminar usuarios
+        if current_user_role != 'superadmin':
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        user = AdminUser.query.get(user_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        # No permitir eliminarse a sí mismo
+        if current_user_id == user_id:
+            return jsonify({'message': 'Cannot delete your own account'}), 400
+        
+        # Registrar actividad antes de eliminar
+        log_admin_activity(
+            current_user_id,
+            'user_deleted',
+            f'Deleted admin user: {user.email}',
+            request
+        )
+        
+        db.session.delete(user)
+        db.session.commit()
         
         return jsonify({
-            'admin': admin.serialize()
+            'message': 'User deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@api.route('/admin/users/<user_id>/toggle-status', methods=['PUT'])
+@admin_required
+def toggle_user_status(current_user_id, current_user_role, user_id):
+    """Activar/desactivar usuario (solo superadmin)"""
+    try:
+        # Solo superadmin puede cambiar estado
+        if current_user_role != 'superadmin':
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        user = AdminUser.query.get(user_id)
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        # No permitir desactivarse a sí mismo
+        if current_user_id == user_id:
+            return jsonify({'message': 'Cannot deactivate your own account'}), 400
+        
+        user.is_active = not user.is_active
+        db.session.commit()
+        
+        # Registrar actividad
+        status = 'activated' if user.is_active else 'deactivated'
+        log_admin_activity(
+            current_user_id,
+            'user_status_changed',
+            f'{status} admin user: {user.email}',
+            request
+        )
+        
+        return jsonify({
+            'message': f'User {status} successfully',
+            'user': user.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@api.route('/admin/activity-logs', methods=['GET'])
+@admin_required
+def get_activity_logs(current_user_id, current_user_role):
+    """Obtener logs de actividad (solo superadmin)"""
+    try:
+        # Solo superadmin puede ver logs
+        if current_user_role != 'superadmin':
+            return jsonify({'message': 'Unauthorized'}), 403
+        
+        # Parámetros de paginación
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 20))
+        
+        # Query con joins para obtener info del usuario
+        logs = UserActivityLog.query.join(AdminUser).order_by(
+            UserActivityLog.created_at.desc()
+        ).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'logs': [log.serialize() for log in logs.items],
+            'total': logs.total,
+            'pages': logs.pages,
+            'current_page': page
         }), 200
         
     except Exception as e:
         return jsonify({'message': str(e)}), 400
-
-# Endpoint de prueba protegido
-@api.route('/admin/test', methods=['GET'])
-@admin_required
-def admin_test(current_user_id, current_user_role):
-    return jsonify({
-        'message': 'Access granted to admin area',
-        'user_id': current_user_id,
-        'role': current_user_role
-    }), 200
 
 # =============================================================================
 # PRODUCT ENDPOINTS - CRUD COMPLETO

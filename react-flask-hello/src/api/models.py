@@ -16,6 +16,15 @@ class UserRoleEnum(enum.Enum):
     SUPERADMIN = "superadmin"
     EDITOR = "editor"
     CONTENT_MANAGER = "content_manager"
+    
+    # Método para crear desde string (ignora case)
+    @classmethod
+    def get(cls, value):
+        value_lower = value.lower()
+        for role in cls:
+            if role.value.lower() == value_lower:
+                return role
+        raise ValueError(f"Invalid role: {value}")
 
 class OrderStatusEnum(enum.Enum):
     PENDING = "pending"
@@ -67,7 +76,8 @@ class AdminUser(db.Model):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     first_name: Mapped[str] = mapped_column(String(50), nullable=False)
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    role: Mapped[UserRoleEnum] = mapped_column(Enum(UserRoleEnum), default=UserRoleEnum.EDITOR)
+    #role: Mapped[UserRoleEnum] = mapped_column(Enum(UserRoleEnum), default=UserRoleEnum.EDITOR)
+    role: Mapped[str] = mapped_column(String(20), default='editor')
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     
@@ -81,7 +91,7 @@ class AdminUser(db.Model):
         return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
-        return f'<AdminUser {self.email} - {self.role.value}>'
+        return f'<AdminUser {self.email} - {self.role}>'
 
     def serialize(self):
         return {
@@ -89,11 +99,58 @@ class AdminUser(db.Model):
             'email': self.email,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'role': self.role.value,
+            'role': self.role,
             'is_active': self.is_active,
             'last_login': self.last_login.isoformat() if self.last_login else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+    
+#modelo AdminUser
+class UserActivityLog(db.Model):
+    __tablename__ = 'user_activity_logs'
+    
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    admin_user_id: Mapped[str] = mapped_column(String(36), db.ForeignKey('admin_users.id'), nullable=False)
+    action: Mapped[str] = mapped_column(String(100), nullable=False)  # 'user_created', 'user_updated', etc.
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(45), nullable=True)  # Para IPv6
+    user_agent: Mapped[str] = mapped_column(Text, nullable=True)
+    
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    
+    # Relación
+    admin_user: Mapped["AdminUser"] = relationship("AdminUser", backref="activity_logs")
+    
+    def __repr__(self):
+        return f'<UserActivityLog {self.admin_user.email} - {self.action}>'
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'admin_user': self.admin_user.serialize() if self.admin_user else None,
+            'action': self.action,
+            'description': self.description,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+# función helper para los logs
+def log_admin_activity(admin_user_id, action, description, request=None):
+    """Función helper para registrar actividad de admin"""
+    try:
+        log = UserActivityLog(
+            admin_user_id=admin_user_id,
+            action=action,
+            description=description,
+            ip_address=request.remote_addr if request else None,
+            user_agent=request.headers.get('User-Agent') if request else None
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error logging activity: {e}")
+        # No hacemos rollback de la transacción principal por un error en el log
 
 class Category(db.Model):
     __tablename__ = 'categories'

@@ -272,24 +272,24 @@ const AdminCategories = () => {
                 />
               </div>
               {formData.image_url && (
-  <div className="mt-2">
-    <label className="block text-sm font-medium text-[#2f4823] mb-2">
-      Vista previa:
-    </label>
-    <img 
-      src={formData.image_url} 
-      alt="Vista previa"
-      className="w-32 h-32 object-cover rounded-lg border border-[#779385]/30"
-      onError={(e) => {
-        e.target.style.display = 'none';
-        e.target.nextElementSibling.style.display = 'block';
-      }}
-    />
-    <div className="w-32 h-32 bg-[#f7f2e7] rounded-lg flex items-center justify-center text-[#779385] text-sm hidden border border-[#779385]/30">
-      Imagen no disponible
-    </div>
-  </div>
-)}
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-[#2f4823] mb-2">
+                    Vista previa:
+                  </label>
+                  <img
+                    src={formData.image_url}
+                    alt="Vista previa"
+                    className="w-32 h-32 object-cover rounded-lg border border-[#779385]/30"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling.style.display = 'block';
+                    }}
+                  />
+                  <div className="w-32 h-32 bg-[#f7f2e7] rounded-lg flex items-center justify-center text-[#779385] text-sm hidden border border-[#779385]/30">
+                    Imagen no disponible
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button
