@@ -7,12 +7,6 @@ const AdminLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  console.log("🔧 ========== ADMIN LAYOUT ==========");
-  console.log("🔧 USUARIO ACTUAL:", user);
-  console.log("🔧 ES SUPERADMIN:", isSuperAdmin());
-  console.log("🔧 ROL DEL USUARIO:", user?.role);
-  console.log("🔧 ====================================");
-
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
@@ -24,9 +18,7 @@ const AdminLayout = () => {
 
   // 🔥 SOLUCIÓN: Usar useMemo para que se recalcule cuando cambie isSuperAdmin
   const menuItems = useMemo(() => {
-    console.log("🔧 RECALCULANDO MENU ITEMS...");
-    console.log("🔧 isSuperAdmin() en menuItems:", isSuperAdmin());
-    
+        
     const items = [
       { path: '/admin/dashboard', label: 'Dashboard', icon: '📊', show: true },
       { path: '/admin/products', label: 'Productos', icon: '👕', show: true },
@@ -36,7 +28,6 @@ const AdminLayout = () => {
     ];
 
     const visibleItems = items.filter(item => item.show);
-    console.log("🔧 ITEMS VISIBLES:", visibleItems.map(i => i.label));
     
     return visibleItems;
   }, [isSuperAdmin]); // Se recalcula cuando cambia isSuperAdmin

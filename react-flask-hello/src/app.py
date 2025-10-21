@@ -95,9 +95,6 @@ def serve_uploaded_file(folder, filename):
         file_path = os.path.join(project_root, 'uploads', folder, filename)
         file_path = os.path.abspath(file_path)
         
-        print(f"📁 Serving file: {file_path}")
-        print(f"📁 Folder: {folder}, Filename: {filename}")
-        
         # Verificar que el archivo existe
         if not os.path.exists(file_path):
             print(f"❌ File not found: {file_path}")

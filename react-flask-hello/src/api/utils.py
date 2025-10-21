@@ -86,10 +86,6 @@ def token_required(f):
             current_user_id = data['sub']
             current_user_role = data['role']
 
-            print(f"🔧 [token_required] User ID: {current_user_id}")
-            print(f"🔧 [token_required] Role from token: [{current_user_role}]")
-            print(f"🔧 [token_required] Role type: {type(current_user_role)}")
-
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired'}), 401
         except jwt.InvalidTokenError:

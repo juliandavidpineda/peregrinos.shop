@@ -144,10 +144,9 @@ def log_admin_activity(admin_user_id, action, description, request=None):
 def get_admin_users(current_user_id, current_user_role):
     """Obtener lista de usuarios admin con filtros"""
     try:
-        print("🔧 === INICIANDO LISTADO DE USUARIOS ===")
-        
+       
         # Solo superadmin puede ver todos los usuarios
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Unauthorized'}), 403
         
         # Parámetros de filtro
@@ -176,7 +175,6 @@ def get_admin_users(current_user_id, current_user_role):
         if status_filter and status_filter != '':
             is_active = status_filter.lower() == 'true'
             query = query.filter_by(is_active=is_active)
-            print(f"🔧 FILTRO is_active APLICADO: {is_active}")
         else:
             print("🔧 SIN FILTRO is_active")
         
@@ -190,19 +188,12 @@ def get_admin_users(current_user_id, current_user_role):
                 )
             )
         
-        print("🔧 QUERY FINAL:")
         total_before_pagination = query.count()
-        print(f"🔧   Total usuarios: {total_before_pagination}")
         
         # Paginación
         users = query.order_by(AdminUser.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
-        
-        print("🔧 RESULTADO:")
-        print(f"🔧   Página {users.page} de {users.pages}")
-        print(f"🔧   Total: {users.total}")
-        print(f"🔧   Usuarios en página: {len(users.items)}")
         
         for user in users.items:
             print(f"🔧   - {user.email} (activo: {user.is_active})")
@@ -226,7 +217,7 @@ def get_admin_user(current_user_id, current_user_role, user_id):
     """Obtener un usuario admin específico"""
     try:
         # Solo superadmin puede ver otros usuarios, o el propio usuario viéndose a sí mismo
-        if current_user_role != 'superadmin' and current_user_id != user_id:
+        if current_user_role.lower() != 'superadmin' and current_user_id != user_id:
             return jsonify({'message': 'Unauthorized'}), 403
         
         user = AdminUser.query.get(user_id)
@@ -247,7 +238,7 @@ def create_admin_user(current_user_id, current_user_role):
         print("🔧 INICIANDO CREACIÓN DE USUARIO")
         
         # Solo superadmin puede crear usuarios
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Unauthorized'}), 403
         
         data = request.get_json()
@@ -324,11 +315,11 @@ def update_admin_user(current_user_id, current_user_role, user_id):
         data = request.get_json()
         
         # Permisos: superadmin puede editar cualquier usuario, otros solo su propio perfil
-        if current_user_role != 'superadmin' and current_user_id != user_id:
+        if current_user_role.lower() != 'superadmin' and current_user_id != user_id:
             return jsonify({'message': 'Unauthorized'}), 403
         
         # Restricciones para no-superadmin
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             # No puede cambiar rol
             if 'role' in data:
                 return jsonify({'message': 'Cannot change role'}), 403
@@ -350,7 +341,7 @@ def update_admin_user(current_user_id, current_user_role, user_id):
             user.last_name = data['last_name']
         
         # Solo superadmin puede cambiar estos campos
-        if current_user_role == 'superadmin':
+        if current_user_role.lower() == 'superadmin':
             if 'role' in data:
                 valid_roles = ['superadmin', 'editor', 'content_manager']
                 if data['role'] not in valid_roles:
@@ -391,7 +382,7 @@ def delete_admin_user(current_user_id, current_user_role, user_id):
     """Eliminar usuario admin (solo superadmin)"""
     try:
         # Solo superadmin puede eliminar usuarios
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Unauthorized'}), 403
         
         user = AdminUser.query.get(user_id)
@@ -427,7 +418,7 @@ def toggle_user_status(current_user_id, current_user_role, user_id):
     """Activar/desactivar usuario (solo superadmin)"""
     try:
         # Solo superadmin puede cambiar estado
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Unauthorized'}), 403
         
         user = AdminUser.query.get(user_id)
@@ -465,7 +456,7 @@ def get_activity_logs(current_user_id, current_user_role):
     """Obtener logs de actividad (solo superadmin)"""
     try:
         # Solo superadmin puede ver logs
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Unauthorized'}), 403
         
         # Parámetros de paginación
@@ -658,7 +649,7 @@ def update_product(current_user_id, current_user_role, product_id):
 def delete_product(current_user_id, current_user_role, product_id):
     """Eliminar un producto (Solo superadmins)"""
     try:
-        if current_user_role != 'superadmin':
+        if current_user_role.lower() != 'superadmin':
             return jsonify({'message': 'Superadmin access required'}), 403
             
         product = Product.query.get(product_id)
