@@ -44,7 +44,7 @@ const MobileFiltersModal = ({
             </button>
           </div>
 
-          {/* Filtro por categorías - ACTUALIZADO */}
+          {/* Filtro por categorías - ACTUALIZADO CON LA NUEVA LÓGICA */}
           <div className="mb-8">
             <h3 className="font-semibold text-[#2f4823] mb-4 flex items-center gap-2">
               <span className="text-[#779385]">●</span>
@@ -52,19 +52,32 @@ const MobileFiltersModal = ({
             </h3>
             <div className="space-y-3">
               {categories.map(category => (
-                <label key={category.id} className="flex items-center justify-between group cursor-pointer">
+                <label 
+                  key={category.id} 
+                  className={`flex items-center justify-between group cursor-pointer ${
+                    category.count === 0 ? 'opacity-50' : ''
+                  }`}
+                >
                   <div className="flex items-center space-x-3">
                     <input
                       type="checkbox"
                       checked={selectedCategories.includes(category.id)}
                       onChange={() => onCategoryChange(category.id)}
-                      className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823] focus:ring-2"
+                      disabled={category.count === 0}
+                      className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823] focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <span className="text-[#2f4823] group-hover:text-[#1f3219] transition-colors">
                       {category.name}
+                      {category.count === 0 && (
+                        <span className="text-xs text-[#779385] ml-2">(próximamente)</span>
+                      )}
                     </span>
                   </div>
-                  <span className="text-sm text-[#779385] bg-[#f7f2e7] px-2 py-1 rounded-full">
+                  <span className={`text-sm px-2 py-1 rounded-full ${
+                    category.count === 0 
+                      ? 'text-[#779385] bg-gray-100' 
+                      : 'text-[#779385] bg-[#f7f2e7]'
+                  }`}>
                     {category.count}
                   </span>
                 </label>
@@ -87,7 +100,7 @@ const MobileFiltersModal = ({
             <input
               type="range"
               min="0"
-              max="300000"
+              max="800000"
               step="10000"
               value={priceRange}
               onChange={onPriceRangeChange}
@@ -98,7 +111,7 @@ const MobileFiltersModal = ({
               <span className="font-semibold text-[#2f4823] bg-[#f7f2e7] px-3 py-1 rounded-full text-sm">
                 Hasta {formatPrice(priceRange)}
               </span>
-              <span className="text-sm text-[#779385]">{formatPrice(300000)}</span>
+              <span className="text-sm text-[#779385]">{formatPrice(800000)}</span>
             </div>
           </div>
 

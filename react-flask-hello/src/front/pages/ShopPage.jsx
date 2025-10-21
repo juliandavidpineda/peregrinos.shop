@@ -201,11 +201,15 @@ useEffect(() => {
   };
 
   // Obtener categorías para el sidebar
-  const sidebarCategories = categories.map(category => ({
+ const sidebarCategories = categories.map(category => {
+  const productCount = products.filter(p => p.category_id === category.id).length;
+  return {
     id: category.id,
     name: category.name,
-    count: products.filter(p => p.category_id === category.id).length
-  })).filter(cat => cat.count > 0);
+    count: productCount,
+    hasProducts: productCount > 0 // Para estilizar diferente si quieres
+  };
+});
 
   // Recargar productos
   const handleReload = () => {

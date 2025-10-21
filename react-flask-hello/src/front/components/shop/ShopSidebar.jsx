@@ -1,16 +1,16 @@
 import React from 'react';
 import MobileFiltersModal from './MobileFiltersModal';
 
-const ShopSidebar = ({ 
-  categories = [], 
-  priceRange, 
-  onCategoryChange, 
+const ShopSidebar = ({
+  categories = [],
+  priceRange,
+  onCategoryChange,
   onPriceRangeChange,
   selectedCategories = [],
   isMobileModalOpen = false,
-  onMobileModalToggle 
+  onMobileModalToggle
 }) => {
-  
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -32,7 +32,7 @@ const ShopSidebar = ({
   return (
     <>
       {/* Botón para abrir filtros en móvil */}
-      <button 
+      <button
         onClick={onMobileModalToggle}
         className="lg:hidden flex items-center gap-2 bg-[#2f4823] text-white px-4 py-3 rounded-lg hover:bg-[#1f3219] transition-colors w-full justify-center mb-4"
       >
@@ -42,7 +42,7 @@ const ShopSidebar = ({
 
       {/* Sidebar normal - oculto en móvil */}
       <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-[#779385]/20 p-6 sticky top-4">
-        
+
         {/* Header */}
         <div className="mb-6 pb-4 border-b border-[#779385]/20">
           <h2 className="font-serif font-bold text-[#2f4823] text-xl">Filtros</h2>
@@ -57,24 +57,31 @@ const ShopSidebar = ({
           </h3>
           <div className="space-y-3">
             {categories.map(category => (
-              <label key={category.id} className="flex items-center justify-between group cursor-pointer">
+              <label key={category.id} className={`flex items-center justify-between group cursor-pointer ${category.count === 0 ? 'opacity-50' : ''}`}>
                 <div className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     checked={selectedCategories.includes(category.id)}
                     onChange={() => onCategoryChange(category.id)}
+                    disabled={category.count === 0} // Opcional: deshabilitar si no hay productos
                     className="w-4 h-4 text-[#2f4823] rounded border-[#779385] focus:ring-[#2f4823] focus:ring-2"
                   />
                   <span className="text-[#2f4823] group-hover:text-[#1f3219] transition-colors">
                     {category.name}
+                    {category.count === 0 && (
+                      <span className="text-xs text-[#779385] ml-2">(próximamente)</span>
+                    )}
                   </span>
                 </div>
-                <span className="text-sm text-[#779385] bg-[#f7f2e7] px-2 py-1 rounded-full">
+                <span className={`text-sm px-2 py-1 rounded-full ${category.count === 0
+                    ? 'text-[#779385] bg-gray-100'
+                    : 'text-[#779385] bg-[#f7f2e7]'
+                  }`}>
                   {category.count}
                 </span>
               </label>
             ))}
-            
+
             {/* Mensaje si no hay categorías */}
             {categories.length === 0 && (
               <p className="text-sm text-[#779385] italic">
@@ -123,7 +130,7 @@ const ShopSidebar = ({
 
         {/* Botón limpiar filtros */}
         {(selectedCategories.length > 0 || priceRange < 800000) && (
-          <button 
+          <button
             className="w-full py-2 px-4 border border-[#779385] text-[#779385] rounded-lg hover:bg-[#f7f2e7] transition-colors font-medium"
             onClick={handleClearFilters}
           >
@@ -141,7 +148,7 @@ const ShopSidebar = ({
       </div>
 
       {/* Modal para móvil */}
-      <MobileFiltersModal 
+      <MobileFiltersModal
         isOpen={isMobileModalOpen}
         onClose={onMobileModalToggle}
         categories={categories}
