@@ -1,4 +1,6 @@
 import React from 'react';
+import logo_blanco from '../assets/img/branding/logo_blanco.png'
+
 
 export const Footer = () => {
   return (
@@ -10,9 +12,18 @@ export const Footer = () => {
           
           {/* Columna 1: Logo y Descripción */}
           <div className="md:col-span-2">
-            <div className="bg-[#f7f2e7] text-[#2f4823] px-6 py-4 rounded-2xl inline-block mb-6">
-              <h2 className="text-2xl font-bold font-serif">PEREGRINOS.SHOP</h2>
-              <p className="text-sm opacity-80 mt-1">Vistiendo la Fe con Amor</p>
+            <div className="bg-[#2f4823] text-[#f7f2e7] px-6 py-4 rounded-2xl inline-block mb-6">
+              <div className="flex-shrink-0 transform hover:scale-105 transition-transform duration-300 border rounded-2xl">
+                          <div className="bg-[#2f4823] text-white px-4 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
+                            <img
+                              src={logo_blanco}
+                              alt="Peregrinos Shop"
+                              className='h-12 w-auto'
+                              onClick={() => navigate('/')}
+                            />
+                          </div>
+                        </div>
+              <p className="text-sm opacity-80 mt-1 text-center">Vistiendo la Fe con Amor</p>
             </div>
             <p className="text-[#f7f2e7]/80 text-lg leading-relaxed max-w-md">
               Creemos que la moda puede ser una forma de evangelización. Cada prenda está confeccionada con amor, fe y el mejor algodón 100% natural.
