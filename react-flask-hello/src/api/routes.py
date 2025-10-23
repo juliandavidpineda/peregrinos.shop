@@ -1371,7 +1371,9 @@ def get_reviews_admin(current_user_id, current_user_role):
 def delete_review(current_user_id, current_user_role, review_id):
     """Eliminar reseña (solo content_manager y superadmin)"""
     try:
-        if current_user_role not in ['content_manager', 'superadmin']:
+        # Convertir a minúsculas para comparación case-insensitive
+        user_role_lower = current_user_role.lower()
+        if user_role_lower not in ['content_manager', 'superadmin']:
             return jsonify({'message': 'No autorizado'}), 403
             
         review = Review.query.get(review_id)
