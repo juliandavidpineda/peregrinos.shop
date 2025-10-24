@@ -14,6 +14,8 @@ import uuid
 from werkzeug.utils import secure_filename
 from flask import current_app, send_from_directory
 
+from api.services.google_auth import GoogleAuthService
+
 api = Blueprint('api', __name__)
 
 # Allow CORS requests to this API
@@ -1801,4 +1803,105 @@ def wompi_webhook():
         
     except Exception as e:
         print(f"Webhook error: {e}")
+        return jsonify({'error': str(e)}), 400
+    
+# =============================================================================
+# GOOGLE AUTHSERVICE
+# =============================================================================
+
+from api.services.google_auth import GoogleAuthService
+from api.models import db, User
+
+# Agrega estas rutas después de tus endpoints existentes
+
+@api.route('/auth/google', methods=['POST'])
+def google_auth():
+    """Autenticación con Google para usuarios normales"""
+    try:
+        data = request.get_json()
+        # ✅ CAMBIAR 'token' por 'credential'
+        token = data.get('credential') or data.get('token')
+        
+        if not token:
+            return jsonify({'error': 'Token is required'}), 400
+        
+        print("🎯 Iniciando autenticación con Google...")
+        print(f"📦 Token recibido (primeros 50 chars): {token[:50]}...")
+        
+        # Verificar token con Google
+        google_service = GoogleAuthService()
+        verification_result = google_service.verify_google_token(token)
+        
+        if not verification_result['success']:
+            return jsonify({'error': verification_result['error']}), 401
+        
+        user_data = verification_result['user_data']
+        
+        # Buscar o crear usuario en la base de datos
+        user = google_service.find_or_create_user(user_data)
+        
+        # Generar JWT token
+        jwt_token = google_service.generate_jwt_token(user.id, user.email)
+        
+        if not jwt_token:
+            return jsonify({'error': 'Error generating token'}), 500
+        
+        print(f"✅ Autenticación exitosa para: {user.email}")
+        
+        return jsonify({
+            'success': True,
+            'token': jwt_token,
+            'user': user.serialize()
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error en google auth: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/auth/user/me', methods=['GET'])
+def get_current_user():
+    """Obtener información del usuario normal actual"""
+    try:
+        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        
+        if not token:
+            return jsonify({'error': 'Token is required'}), 401
+        
+        # Verificar token
+        google_service = GoogleAuthService()
+        try:
+            payload = jwt.decode(token, google_service.secret_key, algorithms=['HS256'])
+            user_id = payload['user_id']
+            
+            # Buscar usuario en la base de datos
+            user = User.query.get(user_id)
+            
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            
+            return jsonify({
+                'success': True,
+                'user': user.serialize()
+            }), 200
+            
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/auth/user/logout', methods=['POST'])
+def logout_user():
+    """Logout de usuario normal"""
+    try:
+        # En el frontend se eliminará el token del localStorage
+        return jsonify({
+            'success': True,
+            'message': 'Logout exitoso'
+        }), 200
+    except Exception as e:
         return jsonify({'error': str(e)}), 400

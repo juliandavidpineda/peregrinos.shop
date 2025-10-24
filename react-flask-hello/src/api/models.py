@@ -52,8 +52,19 @@ class User(db.Model):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
-    password: Mapped[str] = mapped_column(nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False)
+    password: Mapped[str] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
+    
+    # NUEVOS CAMPOS PARA GOOGLE AUTH
+    google_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=True)
+    picture: Mapped[str] = mapped_column(Text, nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean(), default=False)
+    role: Mapped[str] = mapped_column(String(20), default='customer')  # customer, admin, etc.
+    
+    # Timestamps
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
     
     # Relaciones
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="user")
@@ -65,6 +76,13 @@ class User(db.Model):
         return {
             "id": self.id,
             "email": self.email,
+            "name": self.name,
+            "picture": self.picture,
+            "email_verified": self.email_verified,
+            "role": self.role,
+            "is_active": self.is_active,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
             # do not serialize the password, its a security breach
         }
 

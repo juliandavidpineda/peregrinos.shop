@@ -31,6 +31,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import PaymentSuccess from './components/checkout/PaymentSuccess';
 
+import UserLoginPage from './pages/UserLoginPage';
+
 export const router = createBrowserRouter(
   createRoutesFromElements(
     // Envolver todas las rutas en un fragmento
@@ -49,6 +51,7 @@ export const router = createBrowserRouter(
         <Route path="/contact" element={<ContactPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/login" element={<UserLoginPage  />} />
       </Route>
 
       {/* Rutas del Panel Administrativo */}
