@@ -1,7 +1,7 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directory  # ✅ AGREGAR send_from_directory
+from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directory 
 from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum 
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
@@ -556,16 +556,11 @@ def create_product(current_user_id, current_user_role):
 def update_product(current_user_id, current_user_role, product_id):
     """Actualizar un producto existente (Solo admins)"""
     try:
-        print(f"🔧 Headers recibidos: {dict(request.headers)}")
-        print(f"🔧 Content-Type: {request.content_type}")
-        print(f"🔧 Método: {request.method}")
-        print(f"🔧 Product ID: {product_id}")
         product = Product.query.get(product_id)
         if not product:
             return jsonify({'message': 'Product not found'}), 404
         
         data = request.get_json()
-        print(f"📥 UPDATE - Datos recibidos: {data}")
         
         # Actualizar campos
         if 'name' in data:
@@ -859,35 +854,42 @@ def create_order():
     try:
         data = request.get_json()
         
-        print("Datos recibidos para orden:", data)
+        print("📦 Datos recibidos para orden:", data)
         
-        # Validar datos requeridos
-        required_fields = ['customer_info', 'items']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({'message': f'Missing required field: {field}'}), 400
+        # ✅ ACEPTAR múltiples formatos de customer_info
+        if 'customer_info' not in data:
+            return jsonify({'message': 'Missing required field: customer_info'}), 400
         
         customer_info = data['customer_info']
         items = data['items']
         
-        # Validar campos del cliente
-        if not all([customer_info.get('nombre'), customer_info.get('email'), customer_info.get('telefono')]):
-            return jsonify({'message': 'Missing required customer information'}), 400
+        # ✅ COMPATIBILIDAD con ambos formatos (inglés/español)
+        customer_name = customer_info.get('name') or customer_info.get('nombre')
+        customer_email = customer_info.get('email')
+        customer_phone = customer_info.get('phone') or customer_info.get('telefono')
+        customer_address = customer_info.get('address') or customer_info.get('direccion')
+        customer_city = customer_info.get('city') or customer_info.get('ciudad')
+        customer_department = customer_info.get('department') or customer_info.get('departamento')
+        customer_postal_code = customer_info.get('postal_code') or customer_info.get('codigoPostal')
         
-        # Calcular totales
-        subtotal = sum(item['price'] * item['quantity'] for item in items)
-        shipping = 10000  # Envío fijo
-        total = subtotal + shipping
+        # Validar campos requeridos
+        if not all([customer_name, customer_email, customer_phone]):
+            return jsonify({'message': 'Missing required customer information (name, email, phone)'}), 400
+        
+        # Calcular totales (usar los que vienen del frontend o calcular)
+        subtotal = data.get('subtotal', sum(item['price'] * item['quantity'] for item in items))
+        shipping = data.get('shipping', 10000)  # Usar el del frontend o 10000 por defecto
+        total = data.get('total', subtotal + shipping)
         
         # Crear la orden
         order = Order(
-            customer_name=customer_info['nombre'],
-            customer_email=customer_info['email'],
-            customer_phone=customer_info['telefono'],
-            customer_address=customer_info.get('direccion', ''),
-            customer_city=customer_info.get('ciudad', ''),
-            customer_department=customer_info.get('departamento', ''),
-            customer_postal_code=customer_info.get('codigoPostal', ''),
+            customer_name=customer_name,
+            customer_email=customer_email,
+            customer_phone=customer_phone,
+            customer_address=customer_address or '',
+            customer_city=customer_city or '',
+            customer_department=customer_department or '',
+            customer_postal_code=customer_postal_code or '',
             subtotal=subtotal,
             shipping=shipping,
             total=total,
@@ -910,6 +912,8 @@ def create_order():
         
         db.session.commit()
         
+        print(f"✅ Orden creada exitosamente: {order.id}")
+        
         return jsonify({
             'message': 'Order created successfully',
             'order': order.serialize(),
@@ -918,7 +922,7 @@ def create_order():
         
     except Exception as e:
         db.session.rollback()
-        print("Error creating order:", str(e))
+        print("❌ Error creating order:", str(e))
         return jsonify({'message': f'Error creating order: {str(e)}'}), 400
 
 @api.route('/orders/<order_id>', methods=['GET'])
@@ -1685,3 +1689,116 @@ def get_weekly_trends(user_role=None):
         week_count += 1
     
     return weekly_data
+
+# =============================================================================
+# WOMPI PAYMENT ENDPOINTS
+# =============================================================================
+
+@api.route('/create-wompi-payment', methods=['POST'])
+def create_wompi_payment():
+    """Crear link de pago en Wompi"""
+    try:
+        data = request.get_json()
+        print("🎯 Datos recibidos para Wompi:", data)
+        
+        # Validar datos requeridos
+        if not data.get('amount') or not data.get('order_id'):
+            return jsonify({'error': 'Amount and order_id are required'}), 400
+        
+        from .services.wompi_service import WompiService
+        wompi_service = WompiService()
+        
+        # Crear payment link en Wompi
+        result = wompi_service.create_payment_link(
+            amount=float(data['amount']),
+            order_id=data['order_id'],
+            customer_email=data.get('customer_email', ''),
+            customer_name=data.get('customer_name', '')
+        )
+        
+        print("🔗 Resultado de Wompi API:", result)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+            
+        return jsonify({
+            'success': True,
+            'payment_url': result['payment_url'],
+            'payment_id': result['payment_id']
+        }), 200
+        
+    except Exception as e:
+        print("❌ Error en create-wompi-payment:", str(e))
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/verify-wompi-payment', methods=['POST'])
+def verify_wompi_payment():
+    """Verificar estado de pago en Wompi"""
+    try:
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        
+        if not transaction_id:
+            return jsonify({'error': 'Transaction ID required'}), 400
+        
+        from .services.wompi_service import WompiService
+        wompi_service = WompiService()
+        
+        # Verificar transacción
+        result = wompi_service.verify_transaction(transaction_id)
+        
+        if not result['success']:
+            return jsonify({'error': result['error']}), 400
+            
+        # Actualizar orden según estado
+        if result['status'] == 'APPROVED':
+            order_id = result['transaction'].get('reference')
+            order = Order.query.get(order_id)
+            
+            if order:
+                order.status = OrderStatusEnum.CONFIRMED
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'status': 'APPROVED',
+                    'order_id': order_id,
+                    'message': 'Payment confirmed successfully'
+                }), 200
+        
+        return jsonify({
+            'success': True,
+            'status': result['status'],
+            'message': f'Payment status: {result["status"]}'
+        }), 200
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# Webhook para Wompi (opcional pero recomendado)
+@api.route('/wompi-webhook', methods=['POST'])
+def wompi_webhook():
+    """Webhook para recibir notificaciones de Wompi"""
+    try:
+        payload = request.json
+        event_type = payload.get('event')
+        data = payload.get('data', {})
+        transaction = data.get('transaction', {})
+        
+        if event_type == 'transaction.updated':
+            transaction_id = transaction.get('id')
+            status = transaction.get('status')
+            order_id = transaction.get('reference')
+            
+            if status == 'APPROVED' and order_id:
+                order = Order.query.get(order_id)
+                if order:
+                    order.status = OrderStatusEnum.CONFIRMED
+                    db.session.commit()
+                    print(f"Order {order_id} confirmed via webhook")
+        
+        return jsonify({'status': 'success'}), 200
+        
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        return jsonify({'error': str(e)}), 400

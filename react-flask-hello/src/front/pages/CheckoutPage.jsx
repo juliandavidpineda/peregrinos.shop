@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { orderService } from '../services/orderService';
+import { wompiService } from '../services/wompiService'; // Cambiado a Wompi
+import CheckoutSummary from '../components/checkout/CheckoutSummary';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentStep, setCurrentStep] = useState('shipping'); // Solo shipping ahora
+  const [orderId, setOrderId] = useState('');
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -28,41 +32,55 @@ const CheckoutPage = () => {
 
   // Calcular totales
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shipping = 10000;
+  const shipping = subtotal > 200000 ? 0 : 10000; // Envío gratis sobre 200k
   const total = subtotal + shipping;
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsProcessing(true);
+  const handleShippingSubmit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
 
-  try {
-    // Preparar datos para la API
-    const orderData = {
-      customer_info: formData,
-      items: cartItems,
-      subtotal: subtotal,
-      shipping: shipping,
-      total: total
-    };
+    try {
 
-    console.log('Enviando orden:', orderData); // Debug
+      // Crear orden en el backend
+      const orderData = {
+        customer_name: formData.nombre,
+        customer_email: formData.email,
+        customer_phone: formData.telefono,
+        customer_address: formData.direccion,
+        customer_city: formData.ciudad,
+        customer_department: formData.departamento,
+        customer_postal_code: formData.codigoPostal,
+        items: cartItems,
+        subtotal: subtotal,
+        shipping: shipping,
+        total: total
+      };
 
-    // Llamar al servicio para crear la orden
-    const result = await orderService.createOrder(orderData);
-    
-    console.log('Orden creada:', result); // Debug
-    
-    // Limpiar carrito y redirigir a confirmación
-    clearCart();
-    navigate(`/order-confirmation?order_id=${result.order_id}`);
-    
-  } catch (error) {
-    console.error('Error creating order:', error);
-    alert(`Error al procesar el pedido: ${error.message}. Por favor intenta nuevamente.`);
-  } finally {
-    setIsProcessing(false);
-  }
-};
+      const result = await orderService.createOrder(orderData);
+      setOrderId(result.order.id);
+
+      // ✅ NUEVO: Crear payment link en Wompi (en lugar de Stripe)
+      const paymentResult = await wompiService.createPaymentLink(
+        total, 
+        result.order.id, 
+        formData.email, 
+        formData.nombre
+      );
+      
+      if (paymentResult.success) {
+        // Redirigir directamente a Wompi
+        window.location.href = paymentResult.payment_url;
+      } else {
+        throw new Error(paymentResult.error || 'Error al crear el enlace de pago');
+      }
+      
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert(`Error al procesar el pedido: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -73,14 +91,16 @@ const handleSubmit = async (e) => {
 
   if (cartItems.length === 0) {
     return (
-      <div className="min-h-screen bg-[#f7f2e7] py-12">
+      <div className="min-h-screen bg-[#f7f2e7] py-8 lg:py-12">
         <div className="container mx-auto px-4 text-center">
-          <div className="text-6xl mb-4 text-[#779385]">🛒</div>
-          <h1 className="font-serif font-bold text-3xl text-[#2f4823] mb-4">Carrito Vacío</h1>
-          <p className="text-[#779385] mb-8">Agrega productos a tu carrito antes de proceder al pago</p>
+          <div className="text-4xl lg:text-6xl mb-4 text-[#779385]">🛒</div>
+          <h1 className="font-serif font-bold text-2xl lg:text-3xl text-[#2f4823] mb-4">Carrito Vacío</h1>
+          <p className="text-[#779385] mb-6 lg:mb-8 text-sm lg:text-base">
+            Agrega productos a tu carrito antes de proceder al pago
+          </p>
           <button 
             onClick={() => navigate('/shop-page')}
-            className="bg-[#2f4823] text-white px-8 py-3 rounded-lg hover:bg-[#1f3219] transition-colors"
+            className="bg-[#2f4823] text-white px-6 lg:px-8 py-3 rounded-lg hover:bg-[#1f3219] transition-colors text-sm lg:text-base"
           >
             Ir a la Tienda
           </button>
@@ -90,191 +110,187 @@ const handleSubmit = async (e) => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f2e7] py-8">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-[#f7f2e7] py-4 lg:py-8">
+      <div className="container mx-auto px-3 lg:px-4">
         
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="font-serif font-bold text-4xl text-[#2f4823] mb-4">
+        <div className="text-center mb-8 lg:mb-12">
+          <h1 className="font-serif font-bold text-2xl lg:text-4xl text-[#2f4823] mb-3 lg:mb-4">
             Finalizar Compra
           </h1>
-          <p className="text-xl text-[#779385]">
-            Completa tu información para recibir tus prendas bendecidas
+          <p className="text-base lg:text-xl text-[#779385]">
+            Completa tu información para recibir tu compra
+          </p>
+          
+          {/* Steps Indicator - Simplificado */}
+          <div className="flex justify-center mt-6 mb-4">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2f4823] text-white">
+                1
+              </div>
+              <div className="mx-2 text-[#779385]">→</div>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600">
+                2
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-[#779385]">
+            Paso 1 de 2: Información de envío → Paso 2: Pago en Wompi
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 max-w-6xl mx-auto">
           
-          {/* Formulario de envío */}
-          <div className="bg-white rounded-2xl shadow-sm border border-[#779385]/20 p-6">
-            <h2 className="font-serif font-bold text-2xl text-[#2f4823] mb-6">
-              Información de Envío
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Columna izquierda - Formulario */}
+          <div className="space-y-6 lg:space-y-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-[#779385]/20 p-4 lg:p-6">
+              <h2 className="font-serif font-bold text-xl lg:text-2xl text-[#2f4823] mb-4 lg:mb-6">
+                Información de Envío
+              </h2>
               
-              {/* Información personal */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={handleShippingSubmit} className="space-y-4 lg:space-y-6">
+                
+                {/* Información personal */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
+                  <div>
+                    <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                      Nombre completo *
+                    </label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      required
+                      value={formData.nombre}
+                      onChange={handleInputChange}
+                      className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                      placeholder="Tu nombre completo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                      Teléfono *
+                    </label>
+                    <input
+                      type="tel"
+                      name="telefono"
+                      required
+                      value={formData.telefono}
+                      onChange={handleInputChange}
+                      className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                      placeholder="Tu número de teléfono"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block text-[#2f4823] font-semibold mb-2">
-                    Nombre completo *
+                  <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                    placeholder="tu@email.com"
+                  />
+                </div>
+
+                {/* Dirección */}
+                <div>
+                  <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                    Dirección *
                   </label>
                   <input
                     type="text"
-                    name="nombre"
+                    name="direccion"
                     required
-                    value={formData.nombre}
+                    value={formData.direccion}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                    placeholder="Tu nombre completo"
+                    className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                    placeholder="Dirección completa"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[#2f4823] font-semibold mb-2">
-                    Teléfono *
-                  </label>
-                  <input
-                    type="tel"
-                    name="telefono"
-                    required
-                    value={formData.telefono}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                    placeholder="Tu número de teléfono"
-                  />
-                </div>
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4">
+                  <div>
+                    <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                      Ciudad *
+                    </label>
+                    <input
+                      type="text"
+                      name="ciudad"
+                      required
+                      value={formData.ciudad}
+                      onChange={handleInputChange}
+                      className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                      placeholder="Ciudad"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-[#2f4823] font-semibold mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                  placeholder="tu@email.com"
-                />
-              </div>
+                  <div>
+                    <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                      Departamento *
+                    </label>
+                    <input
+                      type="text"
+                      name="departamento"
+                      required
+                      value={formData.departamento}
+                      onChange={handleInputChange}
+                      className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                      placeholder="Departamento"
+                    />
+                  </div>
 
-              {/* Dirección */}
-              <div>
-                <label className="block text-[#2f4823] font-semibold mb-2">
-                  Dirección *
-                </label>
-                <input
-                  type="text"
-                  name="direccion"
-                  required
-                  value={formData.direccion}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                  placeholder="Dirección completa"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-[#2f4823] font-semibold mb-2">
-                    Ciudad *
-                  </label>
-                  <input
-                    type="text"
-                    name="ciudad"
-                    required
-                    value={formData.ciudad}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                    placeholder="Ciudad"
-                  />
+                  <div>
+                    <label className="block text-[#2f4823] font-semibold mb-2 text-sm lg:text-base">
+                      Código Postal
+                    </label>
+                    <input
+                      type="text"
+                      name="codigoPostal"
+                      value={formData.codigoPostal}
+                      onChange={handleInputChange}
+                      className="w-full px-3 lg:px-4 py-2 lg:py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white text-sm lg:text-base"
+                      placeholder="Código postal"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-[#2f4823] font-semibold mb-2">
-                    Departamento *
-                  </label>
-                  <input
-                    type="text"
-                    name="departamento"
-                    required
-                    value={formData.departamento}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                    placeholder="Departamento"
-                  />
-                </div>
+                {/* Botón de continuar a pago */}
+                <button
+                  type="submit"
+                  disabled={isProcessing}
+                  className="w-full bg-[#2f4823] text-white py-3 lg:py-4 rounded-xl font-semibold hover:bg-[#1f3219] disabled:bg-gray-400 transition-colors text-sm lg:text-base mt-4"
+                >
+                  {isProcessing ? 'Procesando...' : 'Continuar al Pago en Wompi'}
+                </button>
 
-                <div>
-                  <label className="block text-[#2f4823] font-semibold mb-2">
-                    Código Postal
-                  </label>
-                  <input
-                    type="text"
-                    name="codigoPostal"
-                    value={formData.codigoPostal}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-[#2f4823] transition-all bg-white"
-                    placeholder="Código postal"
-                  />
+                {/* Información de Wompi */}
+                <div className="mt-4 p-3 bg-[#f7f2e7] rounded-lg border border-[#779385]/20">
+                  <div className="flex items-center justify-center gap-2 text-sm text-[#2f4823]">
+                    <span>🔒</span>
+                    <span>Serás redirigido a Wompi para completar el pago seguro</span>
+                  </div>
+                  <p className="text-xs text-[#779385] text-center mt-1">
+                    Aceptamos Tarjetas, PSE, Efecty y más métodos de pago
+                  </p>
                 </div>
-              </div>
-
-              {/* Botón de envío */}
-              <button
-                type="submit"
-                disabled={isProcessing}
-                className="w-full bg-[#2f4823] text-white py-4 rounded-xl font-semibold hover:bg-[#1f3219] disabled:bg-gray-400 transition-colors text-lg mt-6"
-              >
-                {isProcessing ? 'Procesando...' : 'Confirmar Pedido'}
-              </button>
-            </form>
+              </form>
+            </div>
           </div>
 
-          {/* Resumen del pedido */}
-          <div className="bg-white rounded-2xl shadow-sm border border-[#779385]/20 p-6 h-fit sticky top-4">
-            <h2 className="font-serif font-bold text-2xl text-[#2f4823] mb-6 text-center">
-              Resumen del Pedido
-            </h2>
-            
-            {/* Lista de productos */}
-            <div className="space-y-4 mb-6">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-semibold text-[#2f4823] text-sm">
-                      {item.name}
-                    </p>
-                    <p className="text-[#779385] text-xs">
-                      Talla: {item.size} • {item.quantity} und
-                    </p>
-                  </div>
-                  <span className="font-semibold text-[#2f4823]">
-                    {formatPrice(item.price * item.quantity)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Totales */}
-            <div className="space-y-3 border-t border-[#779385]/20 pt-4">
-              <div className="flex justify-between text-[#2f4823]">
-                <span>Subtotal:</span>
-                <span>{formatPrice(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-[#2f4823]">
-                <span>Envío:</span>
-                <span>{formatPrice(shipping)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-lg border-t border-[#779385]/20 pt-3">
-                <span className="text-[#2f4823]">Total:</span>
-                <span className="text-[#2f4823]">{formatPrice(total)}</span>
-              </div>
-            </div>
-            
+          {/* Columna derecha - Resumen (siempre visible) */}
+          <div className="lg:sticky lg:top-4">
+            <CheckoutSummary 
+              cartItems={cartItems}
+              subtotal={subtotal}
+              shipping={shipping}
+              total={total}
+            />
           </div>
         </div>
       </div>
