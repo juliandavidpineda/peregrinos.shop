@@ -35,15 +35,19 @@ export const UserAuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
+      console.log('🎯 Enviando credential al backend...');
+      console.log('📦 Credential (primeros 50 chars):', googleToken.substring(0, 50));
+      
       const response = await fetch('http://localhost:3001/api/auth/google', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token: googleToken }),
+        body: JSON.stringify({ credential: googleToken }), // ✅ CORREGIDO
       });
 
       const data = await response.json();
+      console.log('📥 Respuesta del backend:', data);
 
       if (data.success) {
         localStorage.setItem('user_token', data.token);
@@ -55,6 +59,7 @@ export const UserAuthProvider = ({ children }) => {
         return { success: false, error: data.error };
       }
     } catch (error) {
+      console.error('❌ Error en loginWithGoogle:', error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);

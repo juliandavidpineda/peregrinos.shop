@@ -106,6 +106,71 @@ def admin_login():
         import traceback
         traceback.print_exc()
         return jsonify({'message': str(e)}), 400
+    
+@api.route('/auth/accept-terms', methods=['POST'])
+def accept_terms():
+    """Endpoint para que usuarios nuevos acepten términos y políticas"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        terms_accepted = data.get('terms_accepted', False)
+        privacy_policy_accepted = data.get('privacy_policy_accepted', False)
+        marketing_emails = data.get('marketing_emails', False)
+        
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+        
+        # Buscar usuario
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Actualizar campos legales
+        from datetime import datetime
+        
+        if terms_accepted:
+            user.terms_accepted = True
+            user.terms_accepted_at = datetime.utcnow()
+        
+        if privacy_policy_accepted:
+            user.privacy_policy_accepted = True
+            user.privacy_policy_accepted_at = datetime.utcnow()
+        
+        if marketing_emails:
+            user.marketing_emails = True
+            user.marketing_emails_accepted_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Terms accepted successfully',
+            'user': user.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error accepting terms: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/auth/check-terms/<user_id>', methods=['GET'])
+def check_terms_status(user_id):
+    """Verificar si un usuario ha aceptado los términos"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'terms_accepted': user.terms_accepted or False,
+            'privacy_policy_accepted': user.privacy_policy_accepted or False,
+            'needs_acceptance': not (user.terms_accepted and user.privacy_policy_accepted)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error checking terms: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 # =============================================================================
 # FUNCIÓN HELPER PARA LOGS - AGREGAR ESTO
@@ -1805,21 +1870,21 @@ def wompi_webhook():
         print(f"Webhook error: {e}")
         return jsonify({'error': str(e)}), 400
     
-# =============================================================================
-# GOOGLE AUTHSERVICE
-# =============================================================================
-
 from api.services.google_auth import GoogleAuthService
 from api.models import db, User
+import jwt
+from datetime import datetime
 
-# Agrega estas rutas después de tus endpoints existentes
+# =============================================================================
+# GOOGLE AUTH ENDPOINTS (MANTENER FUNCIONALIDAD EXISTENTE)
+# =============================================================================
 
 @api.route('/auth/google', methods=['POST'])
 def google_auth():
     """Autenticación con Google para usuarios normales"""
     try:
         data = request.get_json()
-        # ✅ CAMBIAR 'token' por 'credential'
+        # ✅ MANTENER compatibilidad con 'credential' y 'token'
         token = data.get('credential') or data.get('token')
         
         if not token:
@@ -1837,8 +1902,8 @@ def google_auth():
         
         user_data = verification_result['user_data']
         
-        # Buscar o crear usuario en la base de datos
-        user = google_service.find_or_create_user(user_data)
+        # Buscar o crear usuario en la base de datos (AHORA DEVUELVE is_new_user)
+        user, is_new_user = google_service.find_or_create_user(user_data)
         
         # Generar JWT token
         jwt_token = google_service.generate_jwt_token(user.id, user.email)
@@ -1848,10 +1913,15 @@ def google_auth():
         
         print(f"✅ Autenticación exitosa para: {user.email}")
         
+        # ✅ NUEVO: Determinar si necesita aceptar términos
+        needs_terms_acceptance = is_new_user or not (user.terms_accepted and user.privacy_policy_accepted)
+        
         return jsonify({
             'success': True,
             'token': jwt_token,
-            'user': user.serialize()
+            'user': user.serialize(),
+            'is_new_user': is_new_user,  # ✅ NUEVO: indicar si es usuario nuevo
+            'needs_terms_acceptance': needs_terms_acceptance  # ✅ NUEVO: si necesita aceptar términos
         }), 200
         
     except Exception as e:
@@ -1904,4 +1974,76 @@ def logout_user():
             'message': 'Logout exitoso'
         }), 200
     except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# =============================================================================
+# NUEVOS ENDPOINTS PARA TÉRMINOS LEGALES
+# =============================================================================
+
+# =============================================================================
+# NUEVOS ENDPOINTS PARA TÉRMINOS LEGALES (CON NOMBRES ÚNICOS)
+# =============================================================================
+
+@api.route('/auth/accept-legal-terms', methods=['POST'])
+def accept_legal_terms():
+    """Endpoint para que usuarios nuevos acepten términos y políticas"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        terms_accepted = data.get('terms_accepted', False)
+        privacy_policy_accepted = data.get('privacy_policy_accepted', False)
+        marketing_emails = data.get('marketing_emails', False)
+        
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+        
+        # Buscar usuario
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Actualizar campos legales
+        if terms_accepted:
+            user.terms_accepted = True
+            user.terms_accepted_at = datetime.utcnow()
+        
+        if privacy_policy_accepted:
+            user.privacy_policy_accepted = True
+            user.privacy_policy_accepted_at = datetime.utcnow()
+        
+        if marketing_emails:
+            user.marketing_emails = True
+            user.marketing_emails_accepted_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Terms accepted successfully',
+            'user': user.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error accepting terms: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/auth/check-legal-terms/<user_id>', methods=['GET'])
+def check_legal_terms_status(user_id):
+    """Verificar si un usuario ha aceptado los términos"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'terms_accepted': user.terms_accepted or False,
+            'privacy_policy_accepted': user.privacy_policy_accepted or False,
+            'marketing_emails': user.marketing_emails or False,
+            'needs_acceptance': not (user.terms_accepted and user.privacy_policy_accepted)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error checking terms: {str(e)}")
         return jsonify({'error': str(e)}), 400

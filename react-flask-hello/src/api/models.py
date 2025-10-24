@@ -55,16 +55,26 @@ class User(db.Model):
     password: Mapped[str] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
     
-    # NUEVOS CAMPOS PARA GOOGLE AUTH
+    # CAMPOS PARA GOOGLE AUTH
     google_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=True)
     picture: Mapped[str] = mapped_column(Text, nullable=True)
-    email_verified: Mapped[bool] = mapped_column(Boolean(), default=False)
-    role: Mapped[str] = mapped_column(String(20), default='customer')  # customer, admin, etc.
+    email_verified: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
+    role: Mapped[str] = mapped_column(String(20), default='customer', nullable=True)  
     
     # Timestamps
-    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), nullable=True)  
+    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)  
+    
+    # AMPOS LEGALES (OBLIGATORIOS)
+    terms_accepted: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
+    terms_accepted_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+    privacy_policy_accepted: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
+    privacy_policy_accepted_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+    
+    # MARKETING (OPCIONAL)
+    marketing_emails: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
+    marketing_emails_accepted_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     
     # Relaciones
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="user")
@@ -78,14 +88,19 @@ class User(db.Model):
             "email": self.email,
             "name": self.name,
             "picture": self.picture,
-            "email_verified": self.email_verified,
-            "role": self.role,
+            "email_verified": self.email_verified or False,
+            "role": self.role or 'customer',
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
-            # do not serialize the password, its a security breach
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            # ✅ NUEVOS CAMPOS EN SERIALIZE
+            "terms_accepted": self.terms_accepted or False,
+            "terms_accepted_at": self.terms_accepted_at.isoformat() if self.terms_accepted_at else None,
+            "privacy_policy_accepted": self.privacy_policy_accepted or False,
+            "privacy_policy_accepted_at": self.privacy_policy_accepted_at.isoformat() if self.privacy_policy_accepted_at else None,
+            "marketing_emails": self.marketing_emails or False,
+            "marketing_emails_accepted_at": self.marketing_emails_accepted_at.isoformat() if self.marketing_emails_accepted_at else None
         }
-
 class AdminUser(db.Model):
     __tablename__ = 'admin_users'
     

@@ -8,7 +8,7 @@ from api.models import db, User
 class GoogleAuthService:
     def __init__(self):
         self.client_id = os.getenv('GOOGLE_CLIENT_ID', '')
-        self.secret_key = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-this')  # ✅ Cambiado
+        self.secret_key = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-this')
     
     def verify_google_token(self, token):
         """Verificar el token de Google"""
@@ -20,7 +20,7 @@ class GoogleAuthService:
                 token, 
                 requests.Request(), 
                 self.client_id,
-                clock_skew_in_seconds=10  # ✅ Agregado
+                clock_skew_in_seconds=10
             )
             
             # Validar que el token es para nuestra app
@@ -44,7 +44,7 @@ class GoogleAuthService:
             print(f"❌ Error verificando token: {str(e)}")
             return {
                 'success': False,
-                'error': f'Token de Google inválido: {str(e)}'  # ✅ Mostrar error específico
+                'error': f'Token de Google inválido: {str(e)}'
             }
         except Exception as e:
             print(f"❌ Error inesperado: {str(e)}")
@@ -75,6 +75,8 @@ class GoogleAuthService:
             # Buscar por google_id
             user = User.query.filter_by(google_id=user_data['google_id']).first()
             
+            is_new_user = False
+            
             if not user:
                 # Buscar por email
                 user = User.query.filter_by(email=user_data['email']).first()
@@ -97,9 +99,14 @@ class GoogleAuthService:
                         email_verified=user_data['email_verified'],
                         role='customer',
                         is_active=True,
-                        password=None  # ✅ Agregado explícitamente
+                        password=None,
+                        # Nuevos campos legales con valores por defecto
+                        terms_accepted=False,
+                        privacy_policy_accepted=False,
+                        marketing_emails=False
                     )
                     db.session.add(user)
+                    is_new_user = True
             else:
                 print(f"✅ Usuario existente encontrado: {user.email}")
             
@@ -110,7 +117,8 @@ class GoogleAuthService:
             
             db.session.commit()
             
-            return user
+            # Devolver usuario y flag de nuevo usuario
+            return user, is_new_user
             
         except Exception as e:
             db.session.rollback()
