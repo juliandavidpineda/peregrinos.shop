@@ -6,7 +6,7 @@ export const clientUserService = {
    */
   async getClientUsers(filters = {}) {
     const queryParams = new URLSearchParams();
-    
+
     if (filters.search) queryParams.append('search', filters.search);
     if (filters.status !== 'all') queryParams.append('is_active', filters.status === 'active');
     if (filters.terms_accepted !== 'all') {
@@ -48,6 +48,19 @@ export const clientUserService = {
   async getClientUsersStats() {
     // ✅ CAMBIAR: usar authenticatedRequest
     const response = await apiService.authenticatedRequest('/api/admin/client-users/stats');
+    return response;
+  },
+
+  /**
+ * Exportar usuarios clientes a CSV
+ */
+  async exportClientUsers(marketingOnly = false) {
+    const queryParams = new URLSearchParams();
+    if (marketingOnly) {
+      queryParams.append('marketing_only', 'true');
+    }
+
+    const response = await apiService.authenticatedRequest(`/api/admin/client-users/export?${queryParams}`);
     return response;
   }
 };

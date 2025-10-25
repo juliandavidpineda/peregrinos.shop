@@ -291,6 +291,72 @@ def get_client_users_stats():
         print(f"❌ Error getting user stats: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
+@api.route('/admin/client-users/export', methods=['GET'])
+@superadmin_required
+def export_client_users():
+    """Exportar usuarios clientes a CSV (solo superadmin)"""
+    try:
+        print("🔧 === EXPORT CLIENT USERS ===")
+        
+        # Obtener parámetros de filtro
+        marketing_only = request.args.get('marketing_only', 'false').lower() == 'true'
+        
+        print(f"🔧 Filtro marketing_only: {marketing_only}")
+        
+        # Construir query
+        query = User.query.filter(User.is_active == True)
+        
+        if marketing_only:
+            query = query.filter(User.marketing_emails == True)
+            print("🔧 Exportando solo usuarios con marketing aceptado")
+        
+        users = query.order_by(User.created_at.desc()).all()
+        
+        print(f"🔧 Usuarios a exportar: {len(users)}")
+        
+        # Crear datos CSV
+        csv_data = []
+        
+        # Encabezados
+        headers = [
+            'ID', 
+            'Email', 
+            'Nombre', 
+            'Email Verificado',
+            'Términos Aceptados', 
+            'Política Aceptada',
+            'Marketing Aceptado', 
+            'Fecha Registro',
+            'Última Actualización'
+        ]
+        csv_data.append(headers)
+        
+        # Datos de usuarios
+        for user in users:
+            csv_data.append([
+                user.id,
+                user.email or '',
+                user.name or '',
+                'Sí' if user.email_verified else 'No',
+                'Sí' if user.terms_accepted else 'No',
+                'Sí' if user.privacy_policy_accepted else 'No',
+                'Sí' if user.marketing_emails else 'No',
+                user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
+                user.updated_at.strftime('%Y-%m-%d %H:%M:%S') if user.updated_at else ''
+            ])
+        
+        return jsonify({
+            'success': True,
+            'csv_data': csv_data,
+            'total_users': len(users),
+            'export_type': 'marketing_only' if marketing_only else 'all_users',
+            'export_date': datetime.utcnow().isoformat()
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error exporting client users: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+
 # =============================================================================
 # FUNCIÓN HELPER PARA LOGS ADMINUSER
 # =============================================================================
