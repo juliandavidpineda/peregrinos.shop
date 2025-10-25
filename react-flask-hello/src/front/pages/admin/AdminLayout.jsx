@@ -24,8 +24,10 @@ const AdminLayout = () => {
       { path: '/admin/products', label: 'Productos', icon: '👕', show: true },
       { path: '/admin/categories', label: 'Categorías', icon: '📁', show: true },
       { path: '/admin/orders', label: 'Pedidos', icon: '📦', show: true },
-      { path: '/admin/reviews', label: 'Reseñas', icon: '⭐', show: true }, // ✅ NUEVA OPCIÓN
-      { path: '/admin/users', label: 'Usuarios', icon: '👥', show: isSuperAdmin() },
+      { path: '/admin/reviews', label: 'Reseñas', icon: '⭐', show: true },
+      { path: '/admin/users', label: 'Usuarios Admin', icon: '👥', show: isSuperAdmin() },
+      // ✅ NUEVA OPCIÓN - Usuarios Clientes (solo para superadmin)
+      { path: '/admin/client-users', label: 'Usuarios Clientes', icon: '👥', show: isSuperAdmin() },
     ];
 
     const visibleItems = items.filter(item => item.show);

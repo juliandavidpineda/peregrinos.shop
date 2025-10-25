@@ -32,6 +32,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import PaymentSuccess from './components/checkout/PaymentSuccess';
 
 import UserLoginPage from './pages/UserLoginPage';
+import TerminosPage from './pages/TerminosPage';
+import PrivacidadPage from './pages/PrivacidadPage';
+import AdminClientUsers from './pages/admin/AdminClientUsers';
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -52,6 +55,8 @@ export const router = createBrowserRouter(
         <Route path="about" element={<AboutPage />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/login" element={<UserLoginPage  />} />
+        <Route path="/terminos" element={<TerminosPage />} />
+        <Route path="/privacidad" element={<PrivacidadPage />} />
       </Route>
 
       {/* Rutas del Panel Administrativo */}
@@ -77,10 +82,14 @@ export const router = createBrowserRouter(
             <AdminOrders />
           </ProtectedRoute>
         } />
-        {/* AGREGAR NUEVA RUTA DE USUARIOS CON PROTECCIÓN DE ROL */}
         <Route path="users" element={
           <ProtectedRoute requiredRole="superadmin">
             <AdminUsers />
+          </ProtectedRoute>
+        } />
+        <Route path="client-users" element={
+          <ProtectedRoute requiredRole="superadmin">
+            <AdminClientUsers />
           </ProtectedRoute>
         } />
         <Route path="reviews" element={

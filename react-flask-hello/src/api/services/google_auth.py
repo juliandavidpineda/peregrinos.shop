@@ -67,8 +67,8 @@ class GoogleAuthService:
             print(f"❌ Error generando JWT: {str(e)}")
             return None
 
-    def find_or_create_user(self, user_data):
-        """Buscar usuario por google_id o email, o crear uno nuevo"""
+    def find_or_create_user(self, user_data, legal_data=None):
+        """Buscar usuario por google_id o email, o crear uno nuevo con datos legales"""
         try:
             print(f"🔍 Buscando usuario: {user_data['email']}")
             
@@ -85,11 +85,8 @@ class GoogleAuthService:
                     # Usuario existe pero sin google_id - actualizar
                     print(f"🔄 Actualizando usuario existente con Google ID: {user.email}")
                     user.google_id = user_data['google_id']
-                    user.name = user_data['name']
-                    user.picture = user_data['picture']
-                    user.email_verified = user_data['email_verified']
                 else:
-                    # Crear nuevo usuario
+                    # Crear nuevo usuario con datos legales si se proporcionan
                     print(f"👤 Creando nuevo usuario: {user_data['email']}")
                     user = User(
                         google_id=user_data['google_id'],
@@ -100,22 +97,36 @@ class GoogleAuthService:
                         role='customer',
                         is_active=True,
                         password=None,
-                        # Nuevos campos legales con valores por defecto
-                        terms_accepted=False,
-                        privacy_policy_accepted=False,
-                        marketing_emails=False
+                        # Nuevos campos legales - si no vienen datos, se ponen en False
+                        terms_accepted=legal_data.get('terms_accepted', False) if legal_data else False,
+                        privacy_policy_accepted=legal_data.get('privacy_policy_accepted', False) if legal_data else False,
+                        marketing_emails=legal_data.get('marketing_emails', False) if legal_data else False,
+                        # Timestamps para los campos aceptados
+                        terms_accepted_at=datetime.utcnow() if legal_data and legal_data.get('terms_accepted') else None,
+                        privacy_policy_accepted_at=datetime.utcnow() if legal_data and legal_data.get('privacy_policy_accepted') else None,
+                        marketing_emails_accepted_at=datetime.utcnow() if legal_data and legal_data.get('marketing_emails') else None
                     )
                     db.session.add(user)
                     is_new_user = True
             else:
                 print(f"✅ Usuario existente encontrado: {user.email}")
             
-            # Actualizar información del usuario
+            # ✅ SIEMPRE actualizar información (incluso para usuarios existentes)
+            print(f"🔄 Actualizando datos del usuario...")
             user.name = user_data['name']
             user.picture = user_data['picture']
             user.email_verified = user_data['email_verified']
             
             db.session.commit()
+            
+            # ✅ Log para debugging
+            print(f"✅ Usuario guardado:")
+            print(f"   - ID: {user.id}")
+            print(f"   - Name: {user.name}")
+            print(f"   - Email: {user.email}")
+            print(f"   - Terms Accepted: {user.terms_accepted}")
+            print(f"   - Privacy Accepted: {user.privacy_policy_accepted}")
+            print(f"   - Marketing: {user.marketing_emails}")
             
             # Devolver usuario y flag de nuevo usuario
             return user, is_new_user

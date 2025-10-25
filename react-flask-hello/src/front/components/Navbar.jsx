@@ -89,9 +89,9 @@ export const Navbar = () => {
             <button className="hidden sm:flex text-[#2f4823] hover:bg-[#2f4823] hover:text-white transform hover:scale-110 transition-all duration-300 p-2 sm:p-3 rounded-2xl border border-[#2f4823]/30 hover:border-transparent">
               <span className="text-lg">🔍</span>
             </button>
-            
+
             {/* Botón del Carrito */}
-            <button 
+            <button
               onClick={() => setIsCartOpen(true)}
               className="text-[#2f4823] hover:bg-[#2f4823] hover:text-white transform hover:scale-110 transition-all duration-300 p-2 sm:p-3 rounded-2xl border border-[#2f4823]/30 hover:border-transparent relative group"
             >
@@ -114,10 +114,20 @@ export const Navbar = () => {
                     <img
                       src={user.picture}
                       alt={user.name}
-                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full"
+                      className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        console.error('❌ Error cargando imagen de Google:', user.picture);
+                        // Fallback: mostrar inicial
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling?.classList.remove('hidden');
+                      }}
                     />
-                  ) : (
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#2f4823] text-white rounded-full flex items-center justify-center font-semibold text-sm">
+                  ) : null}
+
+                  {/* Fallback: Inicial si falla la imagen */}
+                  {(!user.picture || user.picture === '') && (
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-[#2f4823] text-white rounded-full flex items-center justify-center font-semibold text-sm border-2 border-white shadow-sm">
                       {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                     </div>
                   )}
@@ -188,12 +198,12 @@ export const Navbar = () => {
                 {item.name}
               </button>
             ))}
-            
+
             {/* Búsqueda en menú móvil */}
             <button className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10 mt-2">
               🔍 Buscar
             </button>
-            
+
             {/* Opción de login en móvil - SOLO SI NO ESTÁ LOGUEADO */}
             {!isAuthenticated && (
               <button

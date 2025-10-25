@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
 import { useUserAuth } from '../context/UserAuthContext';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import LegalTermsModal from '../components/LegalTermsModal';
 import { useNavigate } from 'react-router-dom';
 
 const UserLoginPage = () => {
-    const { loginWithGoogle, user, logout, loading } = useUserAuth();
+    const { 
+        loginWithGoogle, 
+        user, 
+        logout, 
+        loading,
+        showTermsModal,
+        closeTermsModal,
+        acceptLegalTerms,
+        pendingUser
+    } = useUserAuth();
     const navigate = useNavigate();
     const [isLogin, setIsLogin] = useState(true); // true = login, false = register
     const [formData, setFormData] = useState({
@@ -15,31 +25,37 @@ const UserLoginPage = () => {
     });
 
     const handleGoogleSuccess = async (credentialResponse) => {
-    try {
-      console.log('✅ Google Login Success');
-      console.log('📦 Full response:', credentialResponse);
-      
-      // Verificar que viene el credential
-      if (!credentialResponse?.credential) {
-        console.error('❌ No credential in response');
-        alert('Error: No se recibió credencial de Google');
-        return;
-      }
-      
-      const result = await loginWithGoogle(credentialResponse.credential);
-      
-      if (result.success) {
-        console.log('✅ Login exitoso:', result.user);
-        navigate('/');
-      } else {
-        console.error('❌ Error en login:', result.error);
-        alert('Error en el login: ' + result.error);
-      }
-    } catch (error) {
-      console.error('❌ Error en handleGoogleSuccess:', error);
-      alert('Error inesperado al iniciar sesión');
-    }
-};
+        try {
+            console.log('✅ Google Login Success');
+            console.log('📦 Full response:', credentialResponse);
+            
+            // Verificar que viene el credential
+            if (!credentialResponse?.credential) {
+                console.error('❌ No credential in response');
+                alert('Error: No se recibió credencial de Google');
+                return;
+            }
+            
+            const result = await loginWithGoogle(credentialResponse.credential);
+            
+            if (result.success) {
+                if (result.needsTermsAcceptance) {
+                    console.log('📝 Mostrando modal de términos...');
+                    // El modal se mostrará automáticamente a través del context
+                } else {
+                    console.log('✅ Login exitoso - Usuario completo:', JSON.stringify(result.user, null, 2));
+                    console.log('🖼️ Picture URL:', result.user?.picture);
+                    navigate('/');
+                }
+            } else {
+                console.error('❌ Error en login:', result.error);
+                alert('Error en el login: ' + result.error);
+            }
+        } catch (error) {
+            console.error('❌ Error en handleGoogleSuccess:', error);
+            alert('Error inesperado al iniciar sesión');
+        }
+    };
 
     const handleGoogleError = () => {
         console.error('Google Login Failed');
@@ -145,6 +161,7 @@ const UserLoginPage = () => {
                         text={isLogin ? "signin_with" : "signup_with"}
                     />
                 </div>
+
                 {/* Separador */}
                 <div className="flex items-center mb-6">
                     <div className="flex-1 border-t border-gray-300"></div>
@@ -234,9 +251,6 @@ const UserLoginPage = () => {
                     </button>
                 </form>
 
-
-                
-
                 {/* Footer */}
                 <div className="text-center text-sm text-gray-500">
                     <p>
@@ -256,6 +270,15 @@ const UserLoginPage = () => {
                         </button>
                     </p>
                 </div>
+
+                {/* Modal de Términos Legales */}
+                <LegalTermsModal
+                    isOpen={showTermsModal}
+                    onClose={closeTermsModal}
+                    onAccept={acceptLegalTerms}
+                    userData={pendingUser?.user}
+                    loading={loading}
+                />
             </div>
         </div>
     );

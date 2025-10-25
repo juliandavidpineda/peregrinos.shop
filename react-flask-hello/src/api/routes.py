@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from flask import current_app, send_from_directory
 
 from api.services.google_auth import GoogleAuthService
+from functools import wraps
 
 api = Blueprint('api', __name__)
 
@@ -87,7 +88,7 @@ def admin_login():
                 return jsonify({'message': 'Account is disabled'}), 401
             
             # Actualizar último login
-            admin.last_login = datetime.datetime.utcnow()
+            admin.last_login = datetime.utcnow()
             db.session.commit()
             
             # Generar token
@@ -107,73 +108,191 @@ def admin_login():
         traceback.print_exc()
         return jsonify({'message': str(e)}), 400
     
-@api.route('/auth/accept-terms', methods=['POST'])
-def accept_terms():
-    """Endpoint para que usuarios nuevos acepten términos y políticas"""
+# =============================================================================
+# ADMIN CLIENT USERS ENDPOINTS (SOLO SUPERADMIN)
+# =============================================================================
+
+def superadmin_required(f):
+    """Decorator para verificar que el usuario es superadmin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            print("🔧 === SUPERADMIN REQUIRED ===")
+            
+            # Obtener token del header
+            token = request.headers.get('Authorization', '').replace('Bearer ', '')
+            print(f"🔧 Token recibido: {token[:50]}...")
+            
+            if not token:
+                return jsonify({'error': 'Token is required'}), 401
+            
+            # ✅ CAMBIO: Usar el MISMO secret key que generate_token
+            secret_key = os.getenv('FLASK_APP_KEY')  # MISMO que generate_token
+            
+            payload = jwt.decode(token, secret_key, algorithms=['HS256'])
+            print(f"🔧 Payload del token: {payload}")
+            
+            admin_user_id = payload.get('sub')
+            print(f"🔧 Admin User ID from token: {admin_user_id}")
+            
+            if not admin_user_id:
+                return jsonify({'error': 'Invalid token'}), 401
+            
+            # Buscar admin user
+            admin_user = AdminUser.query.get(admin_user_id)
+            print(f"🔧 Admin User encontrado: {admin_user}")
+            
+            if not admin_user or not admin_user.is_active:
+                return jsonify({'error': 'Admin user not found or inactive'}), 401
+            
+            print(f"🔧 Rol del admin: {admin_user.role}")
+            
+            # Verificar que es superadmin
+            if admin_user.role.lower() != 'superadmin':  # ✅ .lower() para mayúsculas
+                print(f"🔧 ❌ Rol no es superadmin: {admin_user.role}")
+                return jsonify({'error': 'Superadmin access required'}), 403
+            
+            print("🔧 ✅ Acceso concedido - Es superadmin")
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            print(f"🔧 ❌ Error en decorator: {str(e)}")
+            return jsonify({'error': str(e)}), 401
+    return decorated_function
+
+@api.route('/admin/client-users', methods=['GET'])
+@superadmin_required
+def get_client_users():
+    """Obtener lista de usuarios clientes con filtros (solo superadmin)"""
+    try:
+        # Obtener parámetros de filtro
+        search = request.args.get('search', '')
+        is_active = request.args.get('is_active', type=lambda x: x.lower() == 'true')
+        terms_accepted = request.args.get('terms_accepted', type=lambda x: x.lower() == 'true')
+        marketing_emails = request.args.get('marketing_emails', type=lambda x: x.lower() == 'true')
+        
+        # Construir query
+        query = User.query
+        
+        # Aplicar filtros
+        if search:
+            query = query.filter(
+                db.or_(
+                    User.email.ilike(f'%{search}%'),
+                    User.name.ilike(f'%{search}%')
+                )
+            )
+        
+        if is_active is not None:
+            query = query.filter(User.is_active == is_active)
+            
+        if terms_accepted is not None:
+            query = query.filter(User.terms_accepted == terms_accepted)
+            
+        if marketing_emails is not None:
+            query = query.filter(User.marketing_emails == marketing_emails)
+        
+        # Ordenar por fecha de creación (más recientes primero)
+        users = query.order_by(User.created_at.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'users': [user.serialize() for user in users],
+            'total': len(users)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error getting client users: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/admin/client-users/<int:user_id>', methods=['PUT'])
+@superadmin_required
+def update_client_user(user_id):
+    """Actualizar usuario cliente (solo superadmin)"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
-        terms_accepted = data.get('terms_accepted', False)
-        privacy_policy_accepted = data.get('privacy_policy_accepted', False)
-        marketing_emails = data.get('marketing_emails', False)
-        
-        if not user_id:
-            return jsonify({'error': 'User ID is required'}), 400
         
         # Buscar usuario
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        # Actualizar campos legales
-        from datetime import datetime
+        # Campos permitidos para actualizar
+        allowed_fields = ['is_active', 'name']
         
-        if terms_accepted:
-            user.terms_accepted = True
-            user.terms_accepted_at = datetime.utcnow()
+        for field in allowed_fields:
+            if field in data:
+                setattr(user, field, data[field])
         
-        if privacy_policy_accepted:
-            user.privacy_policy_accepted = True
-            user.privacy_policy_accepted_at = datetime.utcnow()
-        
-        if marketing_emails:
-            user.marketing_emails = True
-            user.marketing_emails_accepted_at = datetime.utcnow()
+        # Log de la actividad
+        log_admin_activity(
+            admin_user_id=get_current_admin_id(),  # Necesitarías implementar esta función
+            action='update_client_user',
+            description=f'Updated user {user.email}',
+            request=request
+        )
         
         db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Terms accepted successfully',
+            'message': 'User updated successfully',
             'user': user.serialize()
         }), 200
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error accepting terms: {str(e)}")
+        print(f"❌ Error updating client user: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
-@api.route('/auth/check-terms/<user_id>', methods=['GET'])
-def check_terms_status(user_id):
-    """Verificar si un usuario ha aceptado los términos"""
+@api.route('/admin/client-users/<int:user_id>/orders', methods=['GET'])
+@superadmin_required
+def get_client_user_orders(user_id):
+    """Obtener pedidos de un usuario cliente (solo superadmin)"""
     try:
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
+        orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).all()
+        
         return jsonify({
             'success': True,
-            'terms_accepted': user.terms_accepted or False,
-            'privacy_policy_accepted': user.privacy_policy_accepted or False,
-            'needs_acceptance': not (user.terms_accepted and user.privacy_policy_accepted)
+            'orders': [order.serialize() for order in orders],
+            'total': len(orders)
         }), 200
         
     except Exception as e:
-        print(f"❌ Error checking terms: {str(e)}")
+        print(f"❌ Error getting user orders: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+
+@api.route('/admin/client-users/stats', methods=['GET'])
+@superadmin_required
+def get_client_users_stats():
+    """Obtener estadísticas de usuarios clientes (solo superadmin)"""
+    try:
+        total_users = User.query.count()
+        active_users = User.query.filter_by(is_active=True).count()
+        users_with_terms = User.query.filter_by(terms_accepted=True).count()
+        users_with_marketing = User.query.filter_by(marketing_emails=True).count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_users': total_users,
+                'active_users': active_users,
+                'users_with_terms': users_with_terms,
+                'users_with_marketing': users_with_marketing,
+                'inactive_users': total_users - active_users
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error getting user stats: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 # =============================================================================
-# FUNCIÓN HELPER PARA LOGS - AGREGAR ESTO
+# FUNCIÓN HELPER PARA LOGS ADMINUSER
 # =============================================================================
 def log_admin_activity(admin_user_id, action, description, request=None):
     """Función helper para registrar actividad de admin"""
@@ -1535,7 +1654,7 @@ def get_profit_analytics(current_user_id=None, current_user_role=None):
         period = request.args.get('period', 'all')
         compare = request.args.get('compare', 'false').lower() == 'true'
         
-        from datetime import datetime, timedelta
+        from datetime import timedelta
         
         # Fechas para el periodo actual
         end_date_current = datetime.now()
