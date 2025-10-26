@@ -15,7 +15,7 @@ export const clientUserService = {
     if (filters.marketing_emails !== 'all') {
       queryParams.append('marketing_emails', filters.marketing_emails === 'accepted');
     }
-    
+
     // ✅ AGREGAR: Filtro de segmento
     if (filters.segment && filters.segment !== 'all') {
       queryParams.append('segment', filters.segment);
@@ -62,6 +62,17 @@ export const clientUserService = {
     if (marketingOnly) {
       queryParams.append('marketing_only', 'true');
     }
+
+    const response = await apiService.authenticatedRequest(`/api/admin/client-users/export?${queryParams}`);
+    return response;
+  },
+
+  /**
+ * Exportar usuarios clientes por segmento específico
+ */
+  async exportClientUsersBySegment(segment) {
+    const queryParams = new URLSearchParams();
+    queryParams.append('segment', segment);
 
     const response = await apiService.authenticatedRequest(`/api/admin/client-users/export?${queryParams}`);
     return response;

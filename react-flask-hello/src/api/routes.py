@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directo
 from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum 
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
-import datetime
+from datetime import datetime, timedelta
 from api.models import OrderStatusEnum
 from sqlalchemy import func, desc, or_
 
@@ -327,8 +327,9 @@ def export_client_users():
         
         # Obtener parámetros de filtro
         marketing_only = request.args.get('marketing_only', 'false').lower() == 'true'
+        segment = request.args.get('segment', 'all')  # ✅ NUEVO: filtro por segmento
         
-        print(f"🔧 Filtro marketing_only: {marketing_only}")
+        print(f"🔧 Filtros - marketing_only: {marketing_only}, segment: '{segment}'")
         
         # Construir query
         query = User.query.filter(User.is_active == True)
@@ -336,6 +337,32 @@ def export_client_users():
         if marketing_only:
             query = query.filter(User.marketing_emails == True)
             print("🔧 Exportando solo usuarios con marketing aceptado")
+        
+        # ✅ NUEVO: Aplicar filtro de segmentación para exportación
+        if segment != 'all':
+            print(f"🔧 Exportando segmento: {segment}")
+            
+            if segment == 'vip':
+                query = query.filter(User.total_orders >= 3)
+            elif segment == 'recurrent':
+                query = query.filter(User.total_orders >= 2)
+            elif segment == 'new':
+                query = query.filter(db.or_(
+                    User.total_orders == 0,
+                    User.total_orders == None
+                ))
+            elif segment == 'inactive':
+                thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+                query = query.filter(
+                    db.or_(
+                        User.last_login == None,
+                        User.last_login < thirty_days_ago
+                    )
+                )
+            elif segment == 'regular':
+                query = query.filter(User.total_orders == 1)
+            elif segment == 'marketing':
+                query = query.filter(User.marketing_emails == True)
         
         users = query.order_by(User.created_at.desc()).all()
         
@@ -350,9 +377,13 @@ def export_client_users():
             'Email', 
             'Nombre', 
             'Email Verificado',
+            'Segmento',
+            'Total Pedidos',
+            'Total Gastado', 
             'Términos Aceptados', 
             'Política Aceptada',
             'Marketing Aceptado', 
+            'Último Login',
             'Fecha Registro',
             'Última Actualización'
         ]
@@ -365,9 +396,13 @@ def export_client_users():
                 user.email or '',
                 user.name or '',
                 'Sí' if user.email_verified else 'No',
+                user.get_user_segment() if hasattr(user, 'get_user_segment') else 'N/A',
+                user.total_orders or 0,
+                user.total_spent or 0.0,
                 'Sí' if user.terms_accepted else 'No',
                 'Sí' if user.privacy_policy_accepted else 'No',
                 'Sí' if user.marketing_emails else 'No',
+                user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Nunca',
                 user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
                 user.updated_at.strftime('%Y-%m-%d %H:%M:%S') if user.updated_at else ''
             ])
@@ -376,7 +411,7 @@ def export_client_users():
             'success': True,
             'csv_data': csv_data,
             'total_users': len(users),
-            'export_type': 'marketing_only' if marketing_only else 'all_users',
+            'export_type': segment if segment != 'all' else 'marketing_only' if marketing_only else 'all_users',
             'export_date': datetime.utcnow().isoformat()
         }), 200
         

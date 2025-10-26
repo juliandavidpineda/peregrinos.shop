@@ -105,6 +105,52 @@ const AdminClientUsers = () => {
     );
   }
 
+  // ✅ NUEVA FUNCIÓN: Exportar por segmento específico
+const exportUsersBySegment = async (segment) => {
+  try {
+    setExporting(true);
+    console.log('🔧 Exportando segmento...', { segment });
+    
+    const response = await clientUserService.exportClientUsersBySegment(segment);
+    console.log('🔧 Respuesta de exportación por segmento:', response);
+    
+    if (response.success) {
+      // Convertir a CSV
+      const csvContent = response.csv_data.map(row => 
+        row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+      ).join('\n');
+      
+      // Crear y descargar archivo
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const timestamp = new Date().toISOString().split('T')[0];
+      const segmentNames = {
+        'vip': 'vip',
+        'new': 'nuevos', 
+        'inactive': 'inactivos',
+        'recurrent': 'recurrentes',
+        'marketing': 'marketing'
+      };
+      link.download = `usuarios_${segmentNames[segment]}_${timestamp}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      alert(`✅ ${response.total_users} usuarios ${segmentNames[segment]} exportados correctamente`);
+    }
+  } catch (error) {
+    console.error('Error exporting users by segment:', error);
+    alert('❌ Error al exportar usuarios: ' + error.message);
+  } finally {
+    setExporting(false);
+  }
+};
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -215,6 +261,42 @@ const AdminClientUsers = () => {
               </>
             )}
           </button>
+          <button
+            onClick={() => exportUsersBySegment('vip')}
+            disabled={exporting || users.filter(u => u.is_vip).length === 0}
+            className="flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+          >
+            <span>👑</span>
+            <span>Exportar VIP ({users.filter(u => u.is_vip).length})</span>
+          </button>
+
+          <button
+            onClick={() => exportUsersBySegment('new')}
+            disabled={exporting || users.filter(u => u.total_orders === 0 || u.total_orders === null).length === 0}
+            className="flex items-center justify-center space-x-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+          >
+            <span>🆕</span>
+            <span>Exportar Nuevos ({users.filter(u => u.total_orders === 0 || u.total_orders === null).length})</span>
+          </button>
+
+          <button
+            onClick={() => exportUsersBySegment('inactive')}
+            disabled={exporting || users.filter(u => u.is_inactive).length === 0}
+            className="flex items-center justify-center space-x-2 bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+          >
+            <span>💤</span>
+            <span>Exportar Inactivos ({users.filter(u => u.is_inactive).length})</span>
+          </button>
+
+          <button
+            onClick={() => exportUsersBySegment('recurrent')}
+            disabled={exporting || users.filter(u => u.is_recurrent && !u.is_vip).length === 0}
+            className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+          >
+            <span>🔄</span>
+            <span>Exportar Recurrentes ({users.filter(u => u.is_recurrent && !u.is_vip).length})</span>
+          </button>
+
         </div>
 
         {/* Filters */}
