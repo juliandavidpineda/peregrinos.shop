@@ -1168,16 +1168,24 @@ def create_order():
     try:
         data = request.get_json()
         
-        print("📦 Datos recibidos para orden:", data)
+        # ✅ VALIDACIÓN DE SEGURIDAD: Verificar datos requeridos
+        if not data:
+            return jsonify({'message': 'No JSON data provided'}), 400
+            
+        print("📦 Datos recibidos para orden:", {k: v for k, v in data.items() if k != 'payment_details'})  # ✅ No loguear datos sensibles
         
-        # ✅ ACEPTAR múltiples formatos de customer_info
+        # ✅ VALIDACIÓN ROBUSTA de customer_info
         if 'customer_info' not in data:
             return jsonify({'message': 'Missing required field: customer_info'}), 400
         
         customer_info = data['customer_info']
-        items = data['items']
+        items = data.get('items', [])
         
-        # ✅ COMPATIBILIDAD con ambos formatos (inglés/español)
+        # ✅ VALIDACIÓN: Items no puede estar vacío
+        if not items or not isinstance(items, list):
+            return jsonify({'message': 'Invalid or empty items list'}), 400
+        
+        # ✅ COMPATIBILIDAD con ambos formatos (inglés/español) con validación
         customer_name = customer_info.get('name') or customer_info.get('nombre')
         customer_email = customer_info.get('email')
         customer_phone = customer_info.get('phone') or customer_info.get('telefono')
@@ -1186,14 +1194,23 @@ def create_order():
         customer_department = customer_info.get('department') or customer_info.get('departamento')
         customer_postal_code = customer_info.get('postal_code') or customer_info.get('codigoPostal')
         
-        # Validar campos requeridos
-        if not all([customer_name, customer_email, customer_phone]):
+        # ✅ VALIDACIÓN DE SEGURIDAD: Campos requeridos
+        required_fields = [customer_name, customer_email, customer_phone]
+        if not all(required_fields):
             return jsonify({'message': 'Missing required customer information (name, email, phone)'}), 400
         
+        # ✅ VALIDACIÓN: Email válido
+        if '@' not in customer_email:
+            return jsonify({'message': 'Invalid email format'}), 400
+        
         # Calcular totales (usar los que vienen del frontend o calcular)
-        subtotal = data.get('subtotal', sum(item['price'] * item['quantity'] for item in items))
+        subtotal = data.get('subtotal', sum(item.get('price', 0) * item.get('quantity', 0) for item in items))
         shipping = data.get('shipping', 10000)  # Usar el del frontend o 10000 por defecto
         total = data.get('total', subtotal + shipping)
+        
+        # ✅ VALIDACIÓN: Totales deben ser positivos
+        if subtotal < 0 or shipping < 0 or total < 0:
+            return jsonify({'message': 'Invalid order totals'}), 400
         
         # ✅ NUEVO: Buscar usuario por email (si existe)
         user = User.query.filter_by(email=customer_email).first()
@@ -1201,12 +1218,13 @@ def create_order():
         
         if user:
             print(f"👤 Usuario encontrado: {user.email} (ID: {user.id})")
+            print(f"🔍 Estado actual del usuario - Pedidos: {user.total_orders}, Gastado: ${user.total_spent}")
         else:
             print(f"👤 Usuario no registrado: {customer_email}")
         
         # Crear la orden
         order = Order(
-            user_id=user_id,  # ✅ NUEVO: Asociar orden con usuario
+            user_id=user_id,  # ✅ Asociar orden con usuario
             customer_name=customer_name,
             customer_email=customer_email,
             customer_phone=customer_phone,
@@ -1221,10 +1239,22 @@ def create_order():
         )
         
         db.session.add(order)
-        db.session.flush()
+        db.session.flush()  # Para obtener el ID sin commit
+        print(f"📝 Orden creada en DB - ID: {order.id}, Status: {order.status.value}")
         
-        # Crear items de la orden
+        # ✅ VALIDACIÓN: Crear items de la orden con verificación
         for item_data in items:
+            # Validar campos requeridos en cada item
+            if not all(key in item_data for key in ['productId', 'quantity', 'size', 'price']):
+                db.session.rollback()
+                return jsonify({'message': 'Missing required fields in order items'}), 400
+            
+            # Validar que el producto existe
+            product = Product.query.get(item_data['productId'])
+            if not product:
+                db.session.rollback()
+                return jsonify({'message': f"Product not found: {item_data['productId']}"}), 404
+            
             order_item = OrderItem(
                 order_id=order.id,
                 product_id=item_data['productId'],
@@ -1233,34 +1263,208 @@ def create_order():
                 price=item_data['price']
             )
             db.session.add(order_item)
+            print(f"📦 Item agregado - Producto: {item_data['productId']}, Cantidad: {item_data['quantity']}")
         
-        # ✅ NUEVO: Actualizar contador de pedidos del usuario
+        # ✅ NUEVO: ACTUALIZACIÓN ROBUSTA DE ESTADÍSTICAS DEL USUARIO
         if user:
-            # Contar total de pedidos del usuario
-            total_orders = Order.query.filter_by(user_id=user.id).count()
-            user.total_orders = total_orders
-            
-            # Actualizar last_order_date
-            from datetime import datetime
-            user.last_order_date = datetime.utcnow()
-            
-            print(f"✅ Usuario actualizado - Total pedidos: {total_orders}")
-            db.session.add(user)
+            try:
+                from sqlalchemy import func
+                
+                print(f"🔍 === INICIANDO DEBUG DE ESTADÍSTICAS ===")
+                print(f"🔍 User ID: {user.id}, Email: {user.email}")
+                
+                # Debug 1: Contar órdenes manualmente (sin filtro de status)
+                manual_orders_count = Order.query.filter_by(user_id=user.id).count()
+                print(f"🔍 DEBUG 1 - Manual orders count (todos los status): {manual_orders_count}")
+                
+                # Debug 2: Ver todas las órdenes del usuario
+                user_orders = Order.query.filter_by(user_id=user.id).all()
+                print(f"🔍 DEBUG 2 - Total de órdenes encontradas: {len(user_orders)}")
+                for i, user_order in enumerate(user_orders):
+                    print(f"🔍 DEBUG 2 - Orden {i+1}: ID={user_order.id}, Status={user_order.status.value}, Total=${user_order.total}")
+                
+                # Debug 3: Consulta con func.count (sin filtro de status)
+                query_count_all = db.session.query(func.count(Order.id)).filter(Order.user_id == user.id)
+                count_all_result = query_count_all.scalar()
+                print(f"🔍 DEBUG 3 - Query count ALL orders result: {count_all_result}")
+                
+                # ✅ CORRECCIÓN DEFINITIVA: Usar OBJETOS Enum, no strings
+                completed_statuses = [OrderStatusEnum.CONFIRMED, OrderStatusEnum.DELIVERED]
+                print(f"🔍 DEBUG - Completed statuses (Enum objects): {[status.value for status in completed_statuses]}")
+                
+                # Debug 4: Consulta con func.count (solo confirmed/delivered - CORREGIDO)
+                query_count_completed = db.session.query(func.count(Order.id)).filter(
+                    Order.user_id == user.id,
+                    Order.status.in_(completed_statuses)  # ✅ USAR OBJETOS ENUM
+                )
+                count_completed_result = query_count_completed.scalar()
+                print(f"🔍 DEBUG 4 - Query count COMPLETED orders result: {count_completed_result}")
+                
+                # Debug 5: Consulta de total spent (solo confirmed/delivered - CORREGIDO)
+                query_spent = db.session.query(func.coalesce(func.sum(Order.total), 0.0)).filter(
+                    Order.user_id == user.id,
+                    Order.status.in_(completed_statuses)  # ✅ USAR OBJETOS ENUM
+                )
+                spent_result = query_spent.scalar()
+                print(f"🔍 DEBUG 5 - Query spent result: {spent_result}")
+                
+                # Debug 6: Consulta de total spent (TODAS las órdenes)
+                query_spent_all = db.session.query(func.coalesce(func.sum(Order.total), 0.0)).filter(
+                    Order.user_id == user.id
+                )
+                spent_all_result = query_spent_all.scalar()
+                print(f"🔍 DEBUG 6 - Query spent ALL orders result: {spent_all_result}")
+                
+                # ✅ DECISIÓN: Qué valores usar
+                user.total_orders = count_all_result or 0
+                user.total_spent = float(spent_result or 0.0)
+                
+                # Actualizar last_order_date
+                from datetime import datetime
+                user.last_order_date = datetime.utcnow()
+                
+                print(f"🔍 === RESUMEN FINAL ===")
+                print(f"🔍 Valores asignados - total_orders: {user.total_orders}, total_spent: {user.total_spent}")
+                print(f"✅ Estadísticas usuario actualizadas - Pedidos: {user.total_orders}, Gastado: ${user.total_spent:.2f}")
+                
+                db.session.add(user)
+                
+            except Exception as stats_error:
+                print(f"⚠️ Error actualizando estadísticas de usuario: {stats_error}")
+                import traceback
+                print(f"⚠️ Traceback completo: {traceback.format_exc()}")
         
         db.session.commit()
+        print(f"💾 COMMIT realizado - Orden {order.id} guardada en base de datos")
+        
+        # ✅ VERIFICACIÓN POST-COMMIT
+        if user:
+            user_refreshed = User.query.get(user.id)
+            print(f"🔍 VERIFICACIÓN POST-COMMIT - User {user_refreshed.email}:")
+            print(f"🔍   - total_orders: {user_refreshed.total_orders}")
+            print(f"🔍   - total_spent: {user_refreshed.total_spent}")
+            print(f"🔍   - last_order_date: {user_refreshed.last_order_date}")
         
         print(f"✅ Orden creada exitosamente: {order.id}")
         
         return jsonify({
             'message': 'Order created successfully',
             'order': order.serialize(),
-            'order_id': order.id
+            'order_id': order.id,
+            'user_updated': user is not None,
+            'user_stats': {
+                'total_orders': user.total_orders if user else 0,
+                'total_spent': user.total_spent if user else 0
+            } if user else None
         }), 201
         
     except Exception as e:
         db.session.rollback()
         print("❌ Error creating order:", str(e))
+        import traceback
+        print(f"❌ Traceback completo: {traceback.format_exc()}")
         return jsonify({'message': f'Error creating order: {str(e)}'}), 400
+    
+@api.route('/admin/recalculate-user-stats', methods=['POST'])
+@superadmin_required
+def recalculate_user_stats():
+    """Recalcular total_orders y total_spent para todos los usuarios (solo superadmin)"""
+    try:
+        print("🔧 === RECALCULATING USER STATS ===")
+        
+        # ✅ SEGURIDAD: Verificar que es superadmin (ya lo hace el decorator)
+        from sqlalchemy import func
+        
+        users = User.query.all()
+        updated_count = 0
+        error_count = 0
+        
+        for user in users:
+            try:
+                # ✅ CÁLCULO SEGURO: Desde la base de datos, solo órdenes completadas
+                stats = db.session.query(
+                    func.count(Order.id).label('total_orders'),
+                    func.coalesce(func.sum(Order.total), 0.0).label('total_spent')
+                ).filter(
+                    Order.user_id == user.id,
+                    Order.status.in_(['confirmed', 'delivered'])  # ✅ Solo órdenes completadas
+                ).first()
+                
+                # Actualizar usuario
+                user.total_orders = stats.total_orders
+                user.total_spent = float(stats.total_spent)
+                
+                # Actualizar last_order_date con la orden más reciente
+                last_order = Order.query.filter_by(user_id=user.id)\
+                    .order_by(Order.created_at.desc())\
+                    .first()
+                user.last_order_date = last_order.created_at if last_order else None
+                
+                db.session.add(user)
+                updated_count += 1
+                
+                print(f"✅ Usuario {user.email}: {user.total_orders} pedidos, ${user.total_spent:.2f} gastado")
+                
+            except Exception as user_error:
+                print(f"❌ Error procesando usuario {user.id}: {user_error}")
+                error_count += 1
+                continue  # Continuar con el siguiente usuario
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Stats recalculated for {updated_count} users, {error_count} errors',
+            'updated_count': updated_count,
+            'error_count': error_count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error in recalculate_user_stats: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+    
+@api.route('/admin/users/<int:user_id>/recalculate-stats', methods=['POST'])
+@superadmin_required
+def recalculate_single_user_stats(user_id):
+    """Recalcular estadísticas para un usuario específico (solo superadmin)"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        from sqlalchemy import func
+        
+        # Calcular estadísticas desde la base de datos
+        stats = db.session.query(
+            func.count(Order.id).label('total_orders'),
+            func.coalesce(func.sum(Order.total), 0.0).label('total_spent')
+        ).filter(
+            Order.user_id == user.id,
+            Order.status.in_(['confirmed', 'delivered'])
+        ).first()
+        
+        # Actualizar usuario
+        user.total_orders = stats.total_orders
+        user.total_spent = float(stats.total_spent)
+        
+        # Actualizar last_order_date
+        last_order = Order.query.filter_by(user_id=user.id)\
+            .order_by(Order.created_at.desc())\
+            .first()
+        user.last_order_date = last_order.created_at if last_order else None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Stats recalculated for user {user.email}',
+            'user': user.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 400
 
 @api.route('/orders/<order_id>', methods=['GET'])
 def get_order(order_id):
@@ -1309,7 +1513,40 @@ def update_order_status(current_user_id, current_user_role, order_id):
         if new_status not in valid_statuses:
             return jsonify({'message': f'Invalid status. Must be one of: {valid_statuses}'}), 400
         
+        old_status = order.status.value
         order.status = OrderStatusEnum(new_status)
+        
+        # ✅ NUEVO: ACTUALIZAR ESTADÍSTICAS DEL USUARIO SI LA ORDEN SE COMPLETA
+        if order.user_id and new_status in ['confirmed', 'delivered']:
+            try:
+                user = User.query.get(order.user_id)
+                if user:
+                    from sqlalchemy import func
+                    
+                    # ✅ CORRECCIÓN DEFINITIVA: Usar OBJETOS Enum
+                    completed_statuses = [OrderStatusEnum.CONFIRMED, OrderStatusEnum.DELIVERED]
+                    
+                    # Recalcular desde base de datos
+                    total_orders = db.session.query(func.count(Order.id))\
+                        .filter(Order.user_id == user.id)\
+                        .scalar()
+                    
+                    total_spent_result = db.session.query(func.coalesce(func.sum(Order.total), 0.0))\
+                        .filter(
+                            Order.user_id == user.id,
+                            Order.status.in_(completed_statuses)  # ✅ CORREGIDO
+                        )\
+                        .scalar()
+                    
+                    user.total_orders = total_orders
+                    user.total_spent = float(total_spent_result)
+                    
+                    print(f"✅ Estadísticas actualizadas - Usuario {user.email}: {user.total_orders} pedidos, ${user.total_spent:.2f} gastado")
+                    db.session.add(user)
+                    
+            except Exception as stats_error:
+                print(f"⚠️ Error actualizando estadísticas: {stats_error}")
+        
         db.session.commit()
         
         return jsonify({
@@ -1319,6 +1556,7 @@ def update_order_status(current_user_id, current_user_role, order_id):
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error updating order status: {str(e)}")
         return jsonify({'message': str(e)}), 400
 
 # =============================================================================
