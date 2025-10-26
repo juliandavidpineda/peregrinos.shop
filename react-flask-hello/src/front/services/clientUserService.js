@@ -15,8 +15,14 @@ export const clientUserService = {
     if (filters.marketing_emails !== 'all') {
       queryParams.append('marketing_emails', filters.marketing_emails === 'accepted');
     }
+    
+    // ✅ AGREGAR: Filtro de segmento
+    if (filters.segment && filters.segment !== 'all') {
+      queryParams.append('segment', filters.segment);
+    }
 
-    // ✅ CAMBIAR: usar authenticatedRequest en lugar de request
+    console.log('📤 Query params enviados:', queryParams.toString()); // ✅ Para debugging
+
     const response = await apiService.authenticatedRequest(`/api/admin/client-users?${queryParams}`);
     return response;
   },
@@ -25,7 +31,6 @@ export const clientUserService = {
    * Actualizar un usuario cliente
    */
   async updateClientUser(userId, userData) {
-    // ✅ CAMBIAR: usar authenticatedRequest
     const response = await apiService.authenticatedRequest(`/api/admin/client-users/${userId}`, {
       method: 'PUT',
       body: JSON.stringify(userData),
@@ -37,7 +42,6 @@ export const clientUserService = {
    * Obtener pedidos de un usuario cliente
    */
   async getClientUserOrders(userId) {
-    // ✅ CAMBIAR: usar authenticatedRequest
     const response = await apiService.authenticatedRequest(`/api/admin/client-users/${userId}/orders`);
     return response;
   },
@@ -46,14 +50,13 @@ export const clientUserService = {
    * Obtener estadísticas de usuarios clientes
    */
   async getClientUsersStats() {
-    // ✅ CAMBIAR: usar authenticatedRequest
     const response = await apiService.authenticatedRequest('/api/admin/client-users/stats');
     return response;
   },
 
   /**
- * Exportar usuarios clientes a CSV
- */
+   * Exportar usuarios clientes a CSV
+   */
   async exportClientUsers(marketingOnly = false) {
     const queryParams = new URLSearchParams();
     if (marketingOnly) {

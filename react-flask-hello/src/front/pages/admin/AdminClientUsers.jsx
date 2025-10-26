@@ -15,11 +15,13 @@ const AdminClientUsers = () => {
     status: 'all',
     role: 'all',
     terms_accepted: 'all',
-    marketing_emails: 'all'
+    marketing_emails: 'all',
+    segment: 'all'
   });
 
   useEffect(() => {
     if (adminUser && adminUser.role?.toLowerCase() === 'superadmin') {
+      console.log('🔍 Filtros actuales:', filters); // ✅ Agregar esto
       loadUsers();
     }
   }, [adminUser, filters]);
@@ -27,7 +29,9 @@ const AdminClientUsers = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
+      console.log('📤 Enviando filtros al backend:', filters); // ✅ Agregar esto
       const response = await clientUserService.getClientUsers(filters);
+      console.log('📥 Respuesta del backend:', response); // ✅ Agregar esto
       setUsers(response.users || []);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -51,31 +55,31 @@ const AdminClientUsers = () => {
     try {
       setExporting(true);
       console.log('🔧 Exportando usuarios...', { marketingOnly });
-      
+
       const response = await clientUserService.exportClientUsers(marketingOnly);
       console.log('🔧 Respuesta de exportación:', response);
-      
+
       if (response.success) {
         // Convertir a CSV
-        const csvContent = response.csv_data.map(row => 
+        const csvContent = response.csv_data.map(row =>
           row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
         ).join('\n');
-        
+
         // Crear y descargar archivo
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        
+
         const timestamp = new Date().toISOString().split('T')[0];
         const type = marketingOnly ? 'marketing' : 'todos';
         link.download = `usuarios_peregrinos_${type}_${timestamp}.csv`;
-        
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         toast.success(`✅ ${response.total_users} usuarios exportados correctamente`);
       }
     } catch (error) {
@@ -113,52 +117,64 @@ const AdminClientUsers = () => {
         </div>
 
         {/* Stats con botones de exportación */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        {/* Stats con Segmentación */}
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#2f4823]/20">
             <div className="text-2xl font-bold text-[#2f4823]">{users.length}</div>
             <div className="text-gray-600">Total Usuarios</div>
-            <button 
+            <button
               onClick={() => exportUsers(false)}
-              disabled={exporting}
+              disabled={exporting || users.length === 0}
               className="text-xs text-blue-600 hover:text-blue-800 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {exporting ? '⏳ Exportando...' : '📥 Exportar Todos'}
-            </button>
-          </div>
-          
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#2f4823]/20">
-            <div className="text-2xl font-bold text-green-600">
-              {users.filter(u => u.is_active).length}
-            </div>
-            <div className="text-gray-600">Usuarios Activos</div>
-          </div>
-          
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#2f4823]/20">
-            <div className="text-2xl font-bold text-blue-600">
-              {users.filter(u => u.terms_accepted).length}
-            </div>
-            <div className="text-gray-600">Términos Aceptados</div>
-          </div>
-          
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#2f4823]/20">
-            <div className="text-2xl font-bold text-purple-600">
-              {users.filter(u => u.marketing_emails).length}
-            </div>
-            <div className="text-gray-600">Marketing Aceptado</div>
-            <button 
-              onClick={() => exportUsers(true)}
-              disabled={exporting}
-              className="text-xs text-blue-600 hover:text-blue-800 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {exporting ? '⏳ Exportando...' : '📧 Exportar Marketing'}
+              {exporting ? '⏳' : '📥 Exportar'}
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#2f4823]/20">
-            <div className="text-2xl font-bold text-orange-600">
-              {users.filter(u => !u.is_active).length}
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-green-200">
+            <div className="text-2xl font-bold text-green-600">
+              {users.filter(u => u.is_vip).length}
             </div>
-            <div className="text-gray-600">Usuarios Inactivos</div>
+            <div className="text-gray-600">Usuarios VIP</div>
+            <div className="text-xs text-green-600 mt-1">3+ pedidos</div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-200">
+            <div className="text-2xl font-bold text-blue-600">
+              {users.filter(u => u.is_recurrent).length}
+            </div>
+            <div className="text-gray-600">Recurrentes</div>
+            <div className="text-xs text-blue-600 mt-1">2+ pedidos</div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-orange-200">
+            <div className="text-2xl font-bold text-orange-600">
+              {users.filter(u => u.is_inactive).length}
+            </div>
+            <div className="text-gray-600">Inactivos</div>
+            <div className="text-xs text-orange-600 mt-1">30+ días</div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-purple-200">
+            <div className="text-2xl font-bold text-purple-600">
+              {users.filter(u => u.marketing_emails).length}
+            </div>
+            <div className="text-gray-600">Marketing</div>
+            <button
+              onClick={() => exportUsers(true)}
+              disabled={exporting || users.filter(u => u.marketing_emails).length === 0}
+              className="text-xs text-blue-600 hover:text-blue-800 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exporting ? '⏳' : '📧 Exportar'}
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+            <div className="text-2xl font-bold text-gray-600">
+              {users.filter(u => u.total_orders === 0).length}
+            </div>
+            <div className="text-gray-600">Nuevos</div>
+            <div className="text-xs text-gray-600 mt-1">0 pedidos</div>
           </div>
         </div>
 
@@ -181,7 +197,7 @@ const AdminClientUsers = () => {
               </>
             )}
           </button>
-          
+
           <button
             onClick={() => exportUsers(true)}
             disabled={exporting || users.filter(u => u.marketing_emails).length === 0}

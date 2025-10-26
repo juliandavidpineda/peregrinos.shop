@@ -10,7 +10,7 @@ const ClientUserFilters = ({ filters, onFiltersChange, onRefresh }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 border border-[#2f4823]/20">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
         {/* Search */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -70,6 +70,25 @@ const ClientUserFilters = ({ filters, onFiltersChange, onRefresh }) => {
             <option value="all">Todos</option>
             <option value="accepted">Aceptado</option>
             <option value="not_accepted">No Aceptado</option>
+          </select>
+        </div>
+
+        {/* ✅ NUEVO: Segment Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Segmento
+          </label>
+          <select
+            value={filters.segment}
+            onChange={(e) => handleFilterChange('segment', e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-transparent"
+          >
+            <option value="all">Todos</option>
+            <option value="vip">VIP (3+ pedidos)</option>
+            <option value="recurrent">Recurrentes (2+ pedidos)</option>
+            <option value="new">Nuevos (0 pedidos)</option>
+            <option value="inactive">Inactivos (30+ días)</option>
+            <option value="regular">Regulares</option>
           </select>
         </div>
 

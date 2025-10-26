@@ -5,6 +5,7 @@ from sqlalchemy.sql import func
 import enum
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta, timezone
 
 db = SQLAlchemy()
 
@@ -66,7 +67,7 @@ class User(db.Model):
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), nullable=True)  
     updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)  
     
-    # AMPOS LEGALES (OBLIGATORIOS)
+    # CAMPOS LEGALES (OBLIGATORIOS)
     terms_accepted: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
     terms_accepted_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     privacy_policy_accepted: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
@@ -75,6 +76,13 @@ class User(db.Model):
     # MARKETING (OPCIONAL)
     marketing_emails: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
     marketing_emails_accepted_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+
+    # ✅ NUEVOS CAMPOS PARA SEGMENTACIÓN
+    last_login: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+    login_count: Mapped[int] = mapped_column(Integer, default=0, nullable=True)
+    total_orders: Mapped[int] = mapped_column(Integer, default=0, nullable=True)
+    total_spent: Mapped[float] = mapped_column(Float, default=0.0, nullable=True)
+    last_order_date: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     
     # Relaciones
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="user")
@@ -99,8 +107,55 @@ class User(db.Model):
             "privacy_policy_accepted": self.privacy_policy_accepted or False,
             "privacy_policy_accepted_at": self.privacy_policy_accepted_at.isoformat() if self.privacy_policy_accepted_at else None,
             "marketing_emails": self.marketing_emails or False,
-            "marketing_emails_accepted_at": self.marketing_emails_accepted_at.isoformat() if self.marketing_emails_accepted_at else None
+            "marketing_emails_accepted_at": self.marketing_emails_accepted_at.isoformat() if self.marketing_emails_accepted_at else None,
+            # ✅ NUEVOS CAMPOS EN SERIALIZE
+            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "login_count": self.login_count or 0,
+            "total_orders": self.total_orders or 0,
+            "total_spent": self.total_spent or 0.0,
+            "last_order_date": self.last_order_date.isoformat() if self.last_order_date else None,
+            # ✅ CAMPOS CALCULADOS PARA SEGMENTACIÓN
+            "user_segment": self.get_user_segment(),
+            "is_vip": (self.total_orders or 0) >= 3, 
+            "is_inactive": self.is_inactive(),
+            "is_recurrent": (self.total_orders or 0) >= 2, 
+            "has_abandoned_cart": self.has_abandoned_cart()
         }
+        # ✅ MÉTODOS DE SEGMENTACIÓN
+    def get_user_segment(self):
+        total_orders = self.total_orders or 0  # ✅ Maneja NULL como 0
+        
+        if total_orders >= 3:
+            return "vip"
+        elif total_orders == 0:
+            return "new"
+        elif self.is_inactive():
+            return "inactive"
+        elif total_orders >= 2:
+            return "recurrent"
+        else:
+            return "regular"
+    
+    def is_inactive(self):
+        if not self.last_login:
+            return True
+        
+        from datetime import datetime, timedelta
+        
+        # ✅ Convertir ambos a naive datetime para comparar
+        last_login_naive = self.last_login.replace(tzinfo=None) if self.last_login.tzinfo else self.last_login
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        
+        return last_login_naive < thirty_days_ago
+    
+    def is_recurrent_buyer(self):
+        return (self.total_orders or 0) >= 2
+    
+    def has_abandoned_cart(self):
+        # Esto lo implementaremos después con el modelo Cart
+        return False  # Placeholder por ahora
+    
+
 class AdminUser(db.Model):
     __tablename__ = 'admin_users'
     

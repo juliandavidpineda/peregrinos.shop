@@ -28,7 +28,9 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
               )}
             </div>
             <p className="text-gray-600 text-sm">{user.email}</p>
-            <div className="flex items-center space-x-4 mt-1">
+            
+            {/* ✅ NUEVO: Badges de Segmentación y Stats */}
+            <div className="flex items-center space-x-2 mt-1">
               <span className={`text-xs px-2 py-1 rounded-full ${
                 user.is_active 
                   ? 'bg-green-100 text-green-800' 
@@ -36,10 +38,38 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
               }`}>
                 {user.is_active ? 'Activo' : 'Inactivo'}
               </span>
+              
+              {/* ✅ BADGES DE SEGMENTACIÓN */}
+              {user.is_vip && (
+                <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 font-medium">
+                  VIP
+                </span>
+              )}
+              {user.is_recurrent && !user.is_vip && (
+                <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 font-medium">
+                  Recurrente
+                </span>
+              )}
+              {user.is_inactive && (
+                <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-800 font-medium">
+                  Inactivo
+                </span>
+              )}
+              {(user.total_orders === 0 || user.total_orders === null) && (
+                <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-800 font-medium">
+                  Nuevo
+                </span>
+              )}
+              
+              {/* ✅ STATS RÁPIDAS */}
               <span className="text-xs text-gray-500">
-                Registrado: {new Date(user.created_at).toLocaleDateString('es-ES')}
+                Pedidos: {user.total_orders || 0} | Logins: {user.login_count || 0}
               </span>
             </div>
+            
+            <span className="text-xs text-gray-500">
+              Registrado: {new Date(user.created_at).toLocaleDateString('es-ES')}
+            </span>
           </div>
         </div>
 
@@ -119,12 +149,17 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
                     {user.google_id ? user.google_id.substring(0, 10) + '...' : 'No'}
                   </span>
                 </div>
+                {/* ✅ NUEVO: Información de Segmentación */}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Segmento:</span>
+                  <span className="text-gray-900 capitalize font-medium">{user.user_segment}</span>
+                </div>
               </div>
             </div>
 
-            {/* Dates */}
+            {/* Dates & Stats */}
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2">Fechas</h4>
+              <h4 className="font-semibold text-gray-900 mb-2">Actividad y Stats</h4>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Creado:</span>
@@ -133,6 +168,23 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Actualizado:</span>
                   <span className="text-gray-900">{formatDate(user.updated_at)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Último login:</span>
+                  <span className="text-gray-900">{formatDate(user.last_login)}</span>
+                </div>
+                {/* ✅ NUEVO: Stats de Actividad */}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total pedidos:</span>
+                  <span className="text-gray-900 font-medium">{user.total_orders || 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total gastado:</span>
+                  <span className="text-gray-900 font-medium">${(user.total_spent || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Contador logins:</span>
+                  <span className="text-gray-900 font-medium">{user.login_count || 0}</span>
                 </div>
               </div>
             </div>

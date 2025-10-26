@@ -170,11 +170,14 @@ def get_client_users():
         is_active = request.args.get('is_active', type=lambda x: x.lower() == 'true')
         terms_accepted = request.args.get('terms_accepted', type=lambda x: x.lower() == 'true')
         marketing_emails = request.args.get('marketing_emails', type=lambda x: x.lower() == 'true')
+        segment = request.args.get('segment', 'all')  # ✅ NUEVO FILTRO
+        
+        print(f"🔧 Filtros - segment: {segment}")
         
         # Construir query
         query = User.query
         
-        # Aplicar filtros
+        # Aplicar filtros existentes
         if search:
             query = query.filter(
                 db.or_(
@@ -191,6 +194,30 @@ def get_client_users():
             
         if marketing_emails is not None:
             query = query.filter(User.marketing_emails == marketing_emails)
+        
+        # ✅ NUEVO: Aplicar filtro de segmentación
+        if segment != 'all':
+            if segment == 'vip':
+                query = query.filter(User.total_orders.isnot(None)).filter(User.total_orders >= 3)
+            elif segment == 'recurrent':
+                query = query.filter(User.total_orders.isnot(None)).filter(User.total_orders >= 2)
+            elif segment == 'new':
+                query = query.filter(db.or_(
+                    User.total_orders == 0,
+                    User.total_orders == None
+                ))
+            elif segment == 'inactive':
+                from datetime import datetime, timedelta
+                thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+                query = query.filter(
+                    db.or_(
+                        User.last_login == None,
+                        # ✅ Convertir a naive datetime para comparación
+                        User.last_login < thirty_days_ago
+                    )
+                )
+            elif segment == 'regular':
+                query = query.filter(User.total_orders.isnot(None)).filter(User.total_orders == 1)
         
         # Ordenar por fecha de creación (más recientes primero)
         users = query.order_by(User.created_at.desc()).all()
@@ -1133,8 +1160,18 @@ def create_order():
         shipping = data.get('shipping', 10000)  # Usar el del frontend o 10000 por defecto
         total = data.get('total', subtotal + shipping)
         
+        # ✅ NUEVO: Buscar usuario por email (si existe)
+        user = User.query.filter_by(email=customer_email).first()
+        user_id = user.id if user else None
+        
+        if user:
+            print(f"👤 Usuario encontrado: {user.email} (ID: {user.id})")
+        else:
+            print(f"👤 Usuario no registrado: {customer_email}")
+        
         # Crear la orden
         order = Order(
+            user_id=user_id,  # ✅ NUEVO: Asociar orden con usuario
             customer_name=customer_name,
             customer_email=customer_email,
             customer_phone=customer_phone,
@@ -1161,6 +1198,19 @@ def create_order():
                 price=item_data['price']
             )
             db.session.add(order_item)
+        
+        # ✅ NUEVO: Actualizar contador de pedidos del usuario
+        if user:
+            # Contar total de pedidos del usuario
+            total_orders = Order.query.filter_by(user_id=user.id).count()
+            user.total_orders = total_orders
+            
+            # Actualizar last_order_date
+            from datetime import datetime
+            user.last_order_date = datetime.utcnow()
+            
+            print(f"✅ Usuario actualizado - Total pedidos: {total_orders}")
+            db.session.add(user)
         
         db.session.commit()
         
