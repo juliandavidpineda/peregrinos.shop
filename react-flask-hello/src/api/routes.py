@@ -1172,8 +1172,6 @@ def create_order():
         if not data:
             return jsonify({'message': 'No JSON data provided'}), 400
             
-        print("📦 Datos recibidos para orden:", {k: v for k, v in data.items() if k != 'payment_details'})  # ✅ No loguear datos sensibles
-        
         # ✅ VALIDACIÓN ROBUSTA de customer_info
         if 'customer_info' not in data:
             return jsonify({'message': 'Missing required field: customer_info'}), 400
@@ -1216,12 +1214,6 @@ def create_order():
         user = User.query.filter_by(email=customer_email).first()
         user_id = user.id if user else None
         
-        if user:
-            print(f"👤 Usuario encontrado: {user.email} (ID: {user.id})")
-            print(f"🔍 Estado actual del usuario - Pedidos: {user.total_orders}, Gastado: ${user.total_spent}")
-        else:
-            print(f"👤 Usuario no registrado: {customer_email}")
-        
         # Crear la orden
         order = Order(
             user_id=user_id,  # ✅ Asociar orden con usuario
@@ -1240,7 +1232,6 @@ def create_order():
         
         db.session.add(order)
         db.session.flush()  # Para obtener el ID sin commit
-        print(f"📝 Orden creada en DB - ID: {order.id}, Status: {order.status.value}")
         
         # ✅ VALIDACIÓN: Crear items de la orden con verificación
         for item_data in items:
@@ -1263,59 +1254,31 @@ def create_order():
                 price=item_data['price']
             )
             db.session.add(order_item)
-            print(f"📦 Item agregado - Producto: {item_data['productId']}, Cantidad: {item_data['quantity']}")
         
         # ✅ NUEVO: ACTUALIZACIÓN ROBUSTA DE ESTADÍSTICAS DEL USUARIO
         if user:
             try:
                 from sqlalchemy import func
                 
-                print(f"🔍 === INICIANDO DEBUG DE ESTADÍSTICAS ===")
-                print(f"🔍 User ID: {user.id}, Email: {user.email}")
-                
-                # Debug 1: Contar órdenes manualmente (sin filtro de status)
-                manual_orders_count = Order.query.filter_by(user_id=user.id).count()
-                print(f"🔍 DEBUG 1 - Manual orders count (todos los status): {manual_orders_count}")
-                
-                # Debug 2: Ver todas las órdenes del usuario
-                user_orders = Order.query.filter_by(user_id=user.id).all()
-                print(f"🔍 DEBUG 2 - Total de órdenes encontradas: {len(user_orders)}")
-                for i, user_order in enumerate(user_orders):
-                    print(f"🔍 DEBUG 2 - Orden {i+1}: ID={user_order.id}, Status={user_order.status.value}, Total=${user_order.total}")
-                
-                # Debug 3: Consulta con func.count (sin filtro de status)
-                query_count_all = db.session.query(func.count(Order.id)).filter(Order.user_id == user.id)
-                count_all_result = query_count_all.scalar()
-                print(f"🔍 DEBUG 3 - Query count ALL orders result: {count_all_result}")
-                
                 # ✅ CORRECCIÓN DEFINITIVA: Usar OBJETOS Enum, no strings
                 completed_statuses = [OrderStatusEnum.CONFIRMED, OrderStatusEnum.DELIVERED]
-                print(f"🔍 DEBUG - Completed statuses (Enum objects): {[status.value for status in completed_statuses]}")
                 
-                # Debug 4: Consulta con func.count (solo confirmed/delivered - CORREGIDO)
-                query_count_completed = db.session.query(func.count(Order.id)).filter(
+                # Contar todas las órdenes del usuario
+                count_all_result = db.session.query(func.count(Order.id)).filter(Order.user_id == user.id).scalar()
+                
+                # Contar órdenes completadas (confirmed/delivered)
+                count_completed_result = db.session.query(func.count(Order.id)).filter(
                     Order.user_id == user.id,
-                    Order.status.in_(completed_statuses)  # ✅ USAR OBJETOS ENUM
-                )
-                count_completed_result = query_count_completed.scalar()
-                print(f"🔍 DEBUG 4 - Query count COMPLETED orders result: {count_completed_result}")
+                    Order.status.in_(completed_statuses)
+                ).scalar()
                 
-                # Debug 5: Consulta de total spent (solo confirmed/delivered - CORREGIDO)
-                query_spent = db.session.query(func.coalesce(func.sum(Order.total), 0.0)).filter(
+                # Calcular total gastado en órdenes completadas
+                spent_result = db.session.query(func.coalesce(func.sum(Order.total), 0.0)).filter(
                     Order.user_id == user.id,
-                    Order.status.in_(completed_statuses)  # ✅ USAR OBJETOS ENUM
-                )
-                spent_result = query_spent.scalar()
-                print(f"🔍 DEBUG 5 - Query spent result: {spent_result}")
+                    Order.status.in_(completed_statuses)
+                ).scalar()
                 
-                # Debug 6: Consulta de total spent (TODAS las órdenes)
-                query_spent_all = db.session.query(func.coalesce(func.sum(Order.total), 0.0)).filter(
-                    Order.user_id == user.id
-                )
-                spent_all_result = query_spent_all.scalar()
-                print(f"🔍 DEBUG 6 - Query spent ALL orders result: {spent_all_result}")
-                
-                # ✅ DECISIÓN: Qué valores usar
+                # Actualizar estadísticas del usuario
                 user.total_orders = count_all_result or 0
                 user.total_spent = float(spent_result or 0.0)
                 
@@ -1323,29 +1286,13 @@ def create_order():
                 from datetime import datetime
                 user.last_order_date = datetime.utcnow()
                 
-                print(f"🔍 === RESUMEN FINAL ===")
-                print(f"🔍 Valores asignados - total_orders: {user.total_orders}, total_spent: {user.total_spent}")
-                print(f"✅ Estadísticas usuario actualizadas - Pedidos: {user.total_orders}, Gastado: ${user.total_spent:.2f}")
-                
                 db.session.add(user)
                 
             except Exception as stats_error:
-                print(f"⚠️ Error actualizando estadísticas de usuario: {stats_error}")
-                import traceback
-                print(f"⚠️ Traceback completo: {traceback.format_exc()}")
+                # Si hay error en estadísticas, continuar sin afectar la orden
+                pass
         
         db.session.commit()
-        print(f"💾 COMMIT realizado - Orden {order.id} guardada en base de datos")
-        
-        # ✅ VERIFICACIÓN POST-COMMIT
-        if user:
-            user_refreshed = User.query.get(user.id)
-            print(f"🔍 VERIFICACIÓN POST-COMMIT - User {user_refreshed.email}:")
-            print(f"🔍   - total_orders: {user_refreshed.total_orders}")
-            print(f"🔍   - total_spent: {user_refreshed.total_spent}")
-            print(f"🔍   - last_order_date: {user_refreshed.last_order_date}")
-        
-        print(f"✅ Orden creada exitosamente: {order.id}")
         
         return jsonify({
             'message': 'Order created successfully',
@@ -1360,9 +1307,6 @@ def create_order():
         
     except Exception as e:
         db.session.rollback()
-        print("❌ Error creating order:", str(e))
-        import traceback
-        print(f"❌ Traceback completo: {traceback.format_exc()}")
         return jsonify({'message': f'Error creating order: {str(e)}'}), 400
     
 @api.route('/admin/recalculate-user-stats', methods=['POST'])
@@ -2266,32 +2210,33 @@ def get_weekly_trends(user_role=None):
     return weekly_data
 
 # =============================================================================
-# WOMPI PAYMENT ENDPOINTS
+# MERCADO PAGO PAYMENT ENDPOINTS
 # =============================================================================
 
-@api.route('/create-wompi-payment', methods=['POST'])
-def create_wompi_payment():
-    """Crear link de pago en Wompi"""
+@api.route('/create-mercadopago-payment', methods=['POST'])
+def create_mercadopago_payment():
+    """Crear preferencia de pago en Mercado Pago"""
     try:
         data = request.get_json()
-        print("🎯 Datos recibidos para Wompi:", data)
+        print("🎯 Datos recibidos para Mercado Pago:", data)
         
         # Validar datos requeridos
-        if not data.get('amount') or not data.get('order_id'):
-            return jsonify({'error': 'Amount and order_id are required'}), 400
+        if not data.get('amount') or not data.get('order_id') or not data.get('items'):
+            return jsonify({'error': 'Amount, order_id and items are required'}), 400
         
-        from .services.wompi_service import WompiService
-        wompi_service = WompiService()
+        # CORREGIR: Usar la instancia global en lugar de crear una nueva
+        from .services.mercadopago_service import mercado_pago_service
         
-        # Crear payment link en Wompi
-        result = wompi_service.create_payment_link(
+        # Crear preferencia en Mercado Pago
+        result = mercado_pago_service.create_preference(
             amount=float(data['amount']),
             order_id=data['order_id'],
             customer_email=data.get('customer_email', ''),
-            customer_name=data.get('customer_name', '')
+            customer_name=data.get('customer_name', ''),
+            items=data['items']
         )
         
-        print("🔗 Resultado de Wompi API:", result)
+        print("🔗 Resultado de Mercado Pago API:", result)
         
         if not result['success']:
             return jsonify({'error': result['error']}), 400
@@ -2299,93 +2244,102 @@ def create_wompi_payment():
         return jsonify({
             'success': True,
             'payment_url': result['payment_url'],
-            'payment_id': result['payment_id']
+            'preference_id': result['preference_id'],
+            'sandbox_url': result.get('sandbox_init_point', '')
         }), 200
         
     except Exception as e:
-        print("❌ Error en create-wompi-payment:", str(e))
+        print("❌ Error en create-mercadopago-payment:", str(e))
         return jsonify({'error': str(e)}), 400
 
-@api.route('/verify-wompi-payment', methods=['POST'])
-def verify_wompi_payment():
-    """Verificar estado de pago en Wompi"""
+@api.route('/verify-mercadopago-payment', methods=['POST'])
+def verify_mercadopago_payment():
+    """Verificar estado de pago en Mercado Pago"""
     try:
         data = request.get_json()
-        transaction_id = data.get('transaction_id')
+        payment_id = data.get('payment_id')
         
-        if not transaction_id:
-            return jsonify({'error': 'Transaction ID required'}), 400
+        if not payment_id:
+            return jsonify({'error': 'Payment ID required'}), 400
         
-        from .services.wompi_service import WompiService
-        wompi_service = WompiService()
+        # CORREGIR: Usar la instancia global
+        from .services.mercadopago_service import mercado_pago_service
         
-        # Verificar transacción
-        result = wompi_service.verify_transaction(transaction_id)
+        # Verificar pago
+        result = mercado_pago_service.get_payment(payment_id)
         
         if not result['success']:
             return jsonify({'error': result['error']}), 400
             
+        payment_data = result['payment']
+        order_id = payment_data.get('external_reference')
+        
         # Actualizar orden según estado
-        if result['status'] == 'APPROVED':
-            order_id = result['transaction'].get('reference')
+        if payment_data['status'] == 'approved':
             order = Order.query.get(order_id)
-            
             if order:
                 order.status = OrderStatusEnum.CONFIRMED
                 db.session.commit()
                 
                 return jsonify({
                     'success': True,
-                    'status': 'APPROVED',
+                    'status': 'approved',
                     'order_id': order_id,
                     'message': 'Payment confirmed successfully'
                 }), 200
         
         return jsonify({
             'success': True,
-            'status': result['status'],
-            'message': f'Payment status: {result["status"]}'
+            'status': payment_data['status'],
+            'message': f'Payment status: {payment_data["status"]}'
         }), 200
             
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-# Webhook para Wompi (opcional pero recomendado)
-@api.route('/wompi-webhook', methods=['POST'])
-def wompi_webhook():
-    """Webhook para recibir notificaciones de Wompi"""
+# Webhook para Mercado Pago
+@api.route('/mercadopago-webhook', methods=['POST'])
+def mercadopago_webhook():
+    """Webhook para recibir notificaciones de Mercado Pago"""
     try:
         payload = request.json
-        event_type = payload.get('event')
-        data = payload.get('data', {})
-        transaction = data.get('transaction', {})
+        print("📩 Mercado Pago Webhook recibido:", payload)
         
-        if event_type == 'transaction.updated':
-            transaction_id = transaction.get('id')
-            status = transaction.get('status')
-            order_id = transaction.get('reference')
+        # Mercado Pago envía el ID del pago
+        if 'data' in payload and 'id' in payload['data']:
+            payment_id = payload['data']['id']
             
-            if status == 'APPROVED' and order_id:
-                order = Order.query.get(order_id)
-                if order:
-                    order.status = OrderStatusEnum.CONFIRMED
-                    db.session.commit()
-                    print(f"Order {order_id} confirmed via webhook")
+            # CORREGIR: Usar la instancia global
+            from .services.mercadopago_service import mercado_pago_service
+            
+            # Obtener información del pago
+            result = mercado_pago_service.get_payment(payment_id)
+            if result['success']:
+                payment_data = result['payment']
+                order_id = payment_data.get('external_reference')
+                status = payment_data.get('status')
+                
+                if status == 'approved' and order_id:
+                    order = Order.query.get(order_id)
+                    if order and order.status != OrderStatusEnum.CONFIRMED:
+                        order.status = OrderStatusEnum.CONFIRMED
+                        db.session.commit()
+                        print(f"✅ Order {order_id} confirmed via Mercado Pago webhook")
         
         return jsonify({'status': 'success'}), 200
         
     except Exception as e:
-        print(f"Webhook error: {e}")
+        print(f"❌ Mercado Pago Webhook error: {e}")
         return jsonify({'error': str(e)}), 400
     
-from api.services.google_auth import GoogleAuthService
-from api.models import db, User
-import jwt
-from datetime import datetime
 
 # =============================================================================
 # GOOGLE AUTH ENDPOINTS (MANTENER FUNCIONALIDAD EXISTENTE)
 # =============================================================================
+from api.services.google_auth import GoogleAuthService
+from api.models import db, User
+import jwt
+from datetime import datetime
 
 @api.route('/auth/google', methods=['POST'])
 def google_auth():

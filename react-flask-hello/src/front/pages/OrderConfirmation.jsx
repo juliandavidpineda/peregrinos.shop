@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { orderService } from '../services/orderService';
-import { wompiService } from '../services/wompiService'; // Importar servicio Wompi
+import { paymentService } from '../services/paymentService'; // ✅ CORREGIDO: usar paymentService
 
 const OrderConfirmation = () => {
   const [searchParams] = useSearchParams();
@@ -10,9 +10,11 @@ const OrderConfirmation = () => {
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('pending');
 
+  // ✅ CORREGIDO: Parámetros para Mercado Pago
   const orderId = searchParams.get('order_id');
-  const transactionId = searchParams.get('transaction_id');
-  const wompiStatus = searchParams.get('status');
+  const paymentId = searchParams.get('payment_id');
+  const collectionStatus = searchParams.get('collection_status');
+  const status = searchParams.get('status');
 
   useEffect(() => {
     const fetchOrderAndVerifyPayment = async () => {
@@ -22,17 +24,18 @@ const OrderConfirmation = () => {
           const result = await orderService.getOrder(orderId);
           setOrder(result.order);
 
-          // Verificar estado de pago si hay transaction_id
-          if (transactionId) {
-            const paymentResult = await wompiService.verifyPayment(transactionId);
-            if (paymentResult.success && paymentResult.status === 'APPROVED') {
+          // ✅ CORREGIDO: Verificar estado de pago para Mercado Pago
+          if (paymentId) {
+            const paymentResult = await paymentService.verifyPayment(paymentId);
+            if (paymentResult.success && paymentResult.status === 'approved') {
               setPaymentStatus('approved');
             } else {
               setPaymentStatus(paymentResult.status || 'pending');
             }
-          } else if (wompiStatus) {
-            // Si viene status directo de Wompi
-            setPaymentStatus(wompiStatus === 'APPROVED' ? 'approved' : wompiStatus.toLowerCase());
+          } else if (collectionStatus || status) {
+            // ✅ CORREGIDO: Si viene status directo de Mercado Pago
+            const mpStatus = collectionStatus || status;
+            setPaymentStatus(mpStatus === 'approved' ? 'approved' : mpStatus);
           }
         } catch (error) {
           console.error('Error fetching order:', error);
@@ -42,7 +45,7 @@ const OrderConfirmation = () => {
     };
 
     fetchOrderAndVerifyPayment();
-  }, [orderId, transactionId, wompiStatus]);
+  }, [orderId, paymentId, collectionStatus, status]); // ✅ CORREGIDO: dependencias
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
@@ -57,6 +60,8 @@ const OrderConfirmation = () => {
       pending: { class: 'bg-yellow-100 text-yellow-800', text: 'Pendiente' },
       approved: { class: 'bg-green-100 text-green-800', text: 'Aprobado' },
       declined: { class: 'bg-red-100 text-red-800', text: 'Rechazado' },
+      rejected: { class: 'bg-red-100 text-red-800', text: 'Rechazado' },
+      in_process: { class: 'bg-blue-100 text-blue-800', text: 'En proceso' },
       error: { class: 'bg-red-100 text-red-800', text: 'Error' },
       voided: { class: 'bg-gray-100 text-gray-800', text: 'Anulado' },
       confirmed: { class: 'bg-blue-100 text-blue-800', text: 'Confirmado' },
@@ -100,7 +105,7 @@ const OrderConfirmation = () => {
                 Tu pago ha sido procesado correctamente. Hemos recibido tu pedido.
               </p>
             </>
-          ) : paymentStatus === 'declined' ? (
+          ) : paymentStatus === 'rejected' || paymentStatus === 'declined' ? (
             <>
               <div className="text-6xl mb-4 text-red-600">❌</div>
               <h1 className="font-serif font-bold text-3xl text-[#2f4823] mb-4">
@@ -110,9 +115,19 @@ const OrderConfirmation = () => {
                 Tu pago no pudo ser procesado. Por favor intenta nuevamente.
               </p>
             </>
+          ) : paymentStatus === 'in_process' ? (
+            <>
+              <div className="text-6xl mb-4 text-blue-600">⏳</div>
+              <h1 className="font-serif font-bold text-3xl text-[#2f4823] mb-4">
+                Pago en Proceso
+              </h1>
+              <p className="text-[#779385] text-lg">
+                Tu pago está siendo procesado. Te notificaremos cuando esté completo.
+              </p>
+            </>
           ) : (
             <>
-              <div className="text-6xl mb-4 text-[#779385]">⏳</div>
+              <div className="text-6xl mb-4 text-[#779385]">📝</div>
               <h1 className="font-serif font-bold text-3xl text-[#2f4823] mb-4">
                 ¡Pedido Confirmado!
               </h1>
@@ -244,7 +259,7 @@ const OrderConfirmation = () => {
                   Hemos recibido tu pago correctamente. Te contactaremos pronto con los detalles de envío.
                 </p>
               </div>
-            ) : paymentStatus === 'declined' ? (
+            ) : paymentStatus === 'rejected' || paymentStatus === 'declined' ? (
               <div className="text-center">
                 <p className="text-[#2f4823] font-semibold mb-2">❌ Hubo un problema con tu pago</p>
                 <p className="text-sm text-[#779385] mb-4">
@@ -258,9 +273,16 @@ const OrderConfirmation = () => {
                   Reintentar Pago
                 </button>
               </div>
+            ) : paymentStatus === 'in_process' ? (
+              <div className="text-center">
+                <p className="text-[#2f4823] font-semibold mb-2">⏳ Tu pago está en proceso</p>
+                <p className="text-sm text-[#779385]">
+                  Tu pago está siendo procesado por Mercado Pago. Esto puede tomar algunos minutos.
+                </p>
+              </div>
             ) : (
               <div className="text-center">
-                <p className="text-[#2f4823] font-semibold mb-2">⏳ Procesando tu pago</p>
+                <p className="text-[#2f4823] font-semibold mb-2">📝 Procesando tu pedido</p>
                 <p className="text-sm text-[#779385]">
                   Tu pedido ha sido creado y estamos procesando el pago. 
                   Te notificaremos cuando todo esté confirmado.

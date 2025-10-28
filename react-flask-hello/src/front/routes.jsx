@@ -29,7 +29,10 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReviews from "./pages/admin/AdminReviews";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Importar páginas de pago
 import PaymentSuccess from './components/checkout/PaymentSuccess';
+import PaymentFailure from './components/checkout/PaymentFailure';
+import PaymentPending from './components/checkout/PaymentPending';
 
 import UserLoginPage from './pages/UserLoginPage';
 import TerminosPage from './pages/TerminosPage';
@@ -53,7 +56,12 @@ export const router = createBrowserRouter(
         <Route path="/santoral" element={<SantoralPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="about" element={<AboutPage />} />
+        
+        {/* ✅ NUEVAS RUTAS DE PAGO */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-failure" element={<PaymentFailure />} />
+        <Route path="/payment-pending" element={<PaymentPending />} />
+        
         <Route path="/login" element={<UserLoginPage  />} />
         <Route path="/terminos" element={<TerminosPage />} />
         <Route path="/privacidad" element={<PrivacidadPage />} />

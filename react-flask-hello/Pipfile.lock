@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "1727d13ceabe856ca8cd56ce8e224e8d5ba1465c377d1cfcd6e7115fd4f59128"
+            "sha256": "fea582794a611d1a0b8b24463eae56638e5b2e2a61c8f0f7d196f6397b99e779"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -482,6 +482,15 @@
             ],
             "markers": "python_version >= '3.9'",
             "version": "==3.0.3"
+        },
+        "mercadopago": {
+            "hashes": [
+                "sha256:2502cb005ab90343d60e577107b422daeff27511f85c45a7bf0784ac2083f2c7",
+                "sha256:8537e9de5d987b545841b05bb35675553b22e661b96ffc4fb178ffba846ff2d7"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.7'",
+            "version": "==2.3.0"
         },
         "oauthlib": {
             "hashes": [

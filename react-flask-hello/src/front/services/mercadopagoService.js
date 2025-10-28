@@ -1,15 +1,13 @@
-// frontend/services/wompiService.js
 import { getBackendUrl } from '../utils/backendConfig';
 
-// ✅ USAR getBackendUrl() en lugar de BACKEND_URL
 const API_URL = getBackendUrl();
 
-export const wompiService = {
-  async createPaymentLink(amount, orderId, customerEmail, customerName) {
+export const mercadopagoService = {
+  async createPayment(amount, orderId, customerEmail, customerName, items) {
     try {
-      const FULL_URL = `${API_URL}/api/create-wompi-payment`;
-      console.log('🔗 Llamando a Wompi endpoint:', FULL_URL);
-      console.log('📦 Datos para Wompi:', { amount, orderId, customerEmail, customerName });
+      const FULL_URL = `${API_URL}/api/create-mercadopago-payment`;
+      console.log('🔗 Llamando a Mercado Pago endpoint:', FULL_URL);
+      console.log('📦 Datos para Mercado Pago:', { amount, orderId, customerEmail, customerName, items });
       
       const response = await fetch(FULL_URL, {
         method: 'POST',
@@ -20,38 +18,38 @@ export const wompiService = {
           amount: amount,
           order_id: orderId,
           customer_email: customerEmail,
-          customer_name: customerName
+          customer_name: customerName,
+          items: items
         }),
       });
 
       console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
       
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Error response:', errorText);
-        throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('✅ Respuesta de Wompi:', data);
+      console.log('✅ Respuesta de Mercado Pago:', data);
       return data;
       
     } catch (error) {
-      console.error('❌ Wompi service error:', error);
+      console.error('❌ Mercado Pago service error:', error);
       throw error;
     }
   },
 
-  async verifyPayment(transactionId) {
+  async verifyPayment(paymentId) {
     try {
-      const response = await fetch(`${API_URL}/api/verify-wompi-payment`, {
+      const response = await fetch(`${API_URL}/api/verify-mercadopago-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          transaction_id: transactionId
+          payment_id: paymentId
         }),
       });
 
