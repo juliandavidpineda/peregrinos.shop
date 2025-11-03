@@ -67,12 +67,9 @@ const CheckoutPage = () => {
         cartItems  // ✅ NUEVO: items para Mercado Pago
       );
 
-      console.log('🔗 Payment Result:', paymentResult); // DEBUG
-
-      // Reemplaza desde la línea 55 hasta 66 aproximadamente
-
+      console.log('🔗 Payment Result:', paymentResult);
+     
       if (paymentResult.success) {
-        // ✅ CORRECTO: Usar sandbox_init_point para pruebas
         if (paymentResult.sandbox_init_point) {
           console.log('🎯 Redirigiendo a Sandbox:', paymentResult.sandbox_init_point);
           window.location.href = paymentResult.sandbox_init_point;

@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCart } from '../../context/CartContext';
 import { orderService } from "../../services/orderService";
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { clearCart } = useCart();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const orderId = searchParams.get('order_id');
+  const paymentId = searchParams.get('payment_id');
+  const paymentStatus = searchParams.get('status');
 
   useEffect(() => {
+    // 🆕 Limpiar carrito cuando se confirma el pago
+    clearCart();
 
-     console.log('🔍 PaymentSuccess montado');
+    console.log('🔍 PaymentSuccess montado');
     console.log('🔍 Order ID:', orderId);
+    console.log('🔍 Payment ID:', paymentId);
+    console.log('🔍 Status:', paymentStatus);
 
     const fetchOrderDetails = async () => {
       if (orderId) {
@@ -34,7 +42,7 @@ const PaymentSuccess = () => {
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId, clearCart]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
@@ -42,6 +50,12 @@ const PaymentSuccess = () => {
       currency: 'COP',
       minimumFractionDigits: 0
     }).format(price);
+  };
+
+  // 🆕 Función para compartir en WhatsApp
+  const shareOnWhatsApp = () => {
+    const message = `¡Acabo de realizar mi pedido en Peregrinos Shop! 🙏\n\nPedido #${orderId?.slice(0, 8)}\nTotal: ${order ? formatPrice(order.total) : ''}\n\nwww.peregrinos.shop`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   if (loading) {
@@ -59,9 +73,11 @@ const PaymentSuccess = () => {
     <div className="min-h-screen bg-[#f7f2e7] py-8 lg:py-12">
       <div className="container mx-auto px-4 max-w-4xl">
 
-        {/* Header de éxito */}
+        {/* Header de éxito - 🆕 Mejorado con animación */}
         <div className="text-center mb-8 lg:mb-12">
-          <div className="text-6xl lg:text-8xl mb-4 text-green-500">✅</div>
+          <div className="inline-block animate-bounce">
+            <div className="text-6xl lg:text-8xl mb-4">✅</div>
+          </div>
           <h1 className="font-serif font-bold text-2xl lg:text-4xl text-[#2f4823] mb-4">
             ¡Pago Exitoso!
           </h1>
@@ -69,9 +85,18 @@ const PaymentSuccess = () => {
             Gracias por tu compra. Tu orden ha sido confirmada.
           </p>
           {order && (
-            <p className="text-sm lg:text-base text-[#779385] mt-2">
-              Número de orden: <strong>{order.id}</strong>
-            </p>
+            <div className="mt-4 inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-[#779385]/20">
+              <span className="text-sm text-[#779385]">Orden:</span>
+              <strong className="text-[#2f4823] font-mono text-sm">
+                #{order.id.slice(0, 8).toUpperCase()}
+              </strong>
+            </div>
+          )}
+          {/* 🆕 Mostrar Payment ID si existe */}
+          {paymentId && (
+            <div className="mt-2 text-xs text-[#779385]">
+              ID de pago: {paymentId}
+            </div>
           )}
         </div>
 
@@ -88,7 +113,7 @@ const PaymentSuccess = () => {
                 {/* Información del cliente */}
                 <div className="border-b border-[#779385]/20 pb-4">
                   <h3 className="font-semibold text-[#2f4823] mb-2">Información de Envío</h3>
-                  <p className="text-[#779385] text-sm">
+                  <p className="text-[#779385] text-sm leading-relaxed">
                     {order.customer_info?.name}<br />
                     {order.customer_info?.email}<br />
                     {order.customer_info?.phone}<br />
@@ -101,18 +126,28 @@ const PaymentSuccess = () => {
                   <h3 className="font-semibold text-[#2f4823] mb-3">Productos</h3>
                   <div className="space-y-3">
                     {order.items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-medium text-[#2f4823] text-sm">
-                            {item.name}
-                          </p>
-                          <p className="text-[#779385] text-xs">
-                            Talla: {item.size} • {item.quantity} und
-                          </p>
+                      <div key={item.id} className="flex gap-3">
+                        {/* 🆕 Agregar imagen si existe */}
+                        {item.image && (
+                          <img 
+                            src={item.image} 
+                            alt={item.name}
+                            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-[#2f4823] text-sm">
+                              {item.name}
+                            </p>
+                            <p className="text-[#779385] text-xs">
+                              Talla: {item.size} • {item.quantity} und
+                            </p>
+                          </div>
+                          <span className="font-semibold text-[#2f4823] text-sm">
+                            {formatPrice(item.price * item.quantity)}
+                          </span>
                         </div>
-                        <span className="font-semibold text-[#2f4823] text-sm">
-                          {formatPrice(item.price * item.quantity)}
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -150,7 +185,7 @@ const PaymentSuccess = () => {
               </h3>
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-[#2f4823] text-white rounded-full flex items-center justify-center text-xs mt-1">
+                  <div className="w-6 h-6 bg-[#2f4823] text-white rounded-full flex items-center justify-center text-xs font-semibold mt-1 flex-shrink-0">
                     1
                   </div>
                   <div>
@@ -162,7 +197,7 @@ const PaymentSuccess = () => {
                 </div>
 
                 <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-[#2f4823] text-white rounded-full flex items-center justify-center text-xs mt-1">
+                  <div className="w-6 h-6 bg-[#2f4823] text-white rounded-full flex items-center justify-center text-xs font-semibold mt-1 flex-shrink-0">
                     2
                   </div>
                   <div>
@@ -174,7 +209,7 @@ const PaymentSuccess = () => {
                 </div>
 
                 <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-[#2f4823] text-white rounded-full flex items-center justify-center text-xs mt-1">
+                  <div className="w-6 h-6 bg-[#2f4823] text-white rounded-full flex items-center justify-center text-xs font-semibold mt-1 flex-shrink-0">
                     3
                   </div>
                   <div>
@@ -205,14 +240,23 @@ const PaymentSuccess = () => {
                 >
                   Ir al Inicio
                 </button>
-                {order && (
+                <div className="grid grid-cols-2 gap-3">
+                  {order && (
+                    <button
+                      onClick={() => window.print()}
+                      className="w-full border border-[#779385] text-[#779385] py-3 rounded-lg hover:bg-white transition-colors font-medium text-sm"
+                    >
+                      📄 Imprimir
+                    </button>
+                  )}
+                  {/* 🆕 Botón para compartir en WhatsApp */}
                   <button
-                    onClick={() => window.print()}
-                    className="w-full border border-[#779385] text-[#779385] py-3 rounded-lg hover:bg-white transition-colors font-medium"
+                    onClick={shareOnWhatsApp}
+                    className="w-full border border-[#779385] text-[#779385] py-3 rounded-lg hover:bg-white transition-colors font-medium text-sm"
                   >
-                    Imprimir Comprobante
+                    📱 Compartir
                   </button>
-                )}
+                </div>
               </div>
             </div>
 
@@ -225,6 +269,17 @@ const PaymentSuccess = () => {
               <p className="text-sm text-[#779385] mt-2">
                 Gracias por apoyar nuestro ministerio
               </p>
+            </div>
+
+            {/* 🆕 Ayuda/Soporte */}
+            <div className="text-center text-sm text-[#779385]">
+              <p>¿Tienes alguna pregunta?</p>
+              <button
+                onClick={() => navigate('/contacto')}
+                className="text-[#2f4823] font-semibold hover:underline mt-1"
+              >
+                Contáctanos →
+              </button>
             </div>
           </div>
         </div>

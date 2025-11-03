@@ -43,36 +43,54 @@ class MercadoPagoService:
                     "unit_price": float(item.get('price', 0))
                 })
             
-            # Agregar shipping
-            shipping_cost = amount - sum(item.get('price', 0) * item.get('quantity', 1) for item in items)
-            if shipping_cost > 0:
-                mp_items.append({
-                    "id": "shipping",
-                    "title": "Envío",
-                    "description": "Costo de envío",
-                    "category_id": "shipping",
-                    "quantity": 1,
-                    "currency_id": "COP",
-                    "unit_price": float(shipping_cost)
-                })
-            
             frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
             backend_url = os.getenv('BACKEND_URL', 'http://localhost:3001')
             
-            # Preferencia de pago
             preference_data = {
                 "items": mp_items,
                 "payer": {
                     "name": customer_name,
-                    "email": customer_email
+                    "email": customer_email,
+                    # 🆕 Datos adicionales del pagador (mejoran aprobación)
+                    "phone": {
+                        "area_code": "57",
+                        "number": "3001234567"
+                    },
+                    "identification": {
+                        "type": "CC",
+                        "number": "00000000"
+                    },
+                    "address": {
+                        "zip_code": "110111",
+                        "street_name": "Calle 123"
+                    }
                 },
+                # URLs de retorno - IMPORTANTE: usar "back_urls" (plural)
                 "back_urls": {
-                    "success": f"{frontend_url}/payment-success",
-                    "failure": f"{frontend_url}/checkout",
-                    "pending": f"{frontend_url}/payment-pending"
+                    "success": f"{frontend_url}/payment-success?order_id={order_id}",
+                    "failure": f"{frontend_url}/checkout?order_id={order_id}",
+                    "pending": f"{frontend_url}/payment-pending?order_id={order_id}"
                 },
+                #"auto_return": "approved",
+                
                 "external_reference": order_id,
-                "notification_url": f"{backend_url}/api/mercadopago-webhook"
+                "notification_url": f"{backend_url}/api/mercadopago-webhook",
+                
+                # 🆕 Nombre que aparece en el resumen de tarjeta
+                #"statement_descriptor": "PEREGRINOS SHOP",
+                
+                # 🆕 Métodos de pago excluidos (opcional)
+                # "payment_methods": {
+                #     "excluded_payment_types": [],
+                #     "excluded_payment_methods": [],
+                #     "installments": 12  # Cuotas máximas
+                # },
+                
+                # 🆕 Metadata adicional (útil para tracking)
+                "metadata": {
+                    "order_id": order_id,
+                    "customer_email": customer_email
+                }
             }
             
             print(f"   Preference data: {json.dumps(preference_data, indent=2)}")
