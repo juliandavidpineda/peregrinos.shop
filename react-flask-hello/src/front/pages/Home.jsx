@@ -42,17 +42,6 @@ export const Home = () => {
 			<ProductGrid />
 			<ProcessSection />
 			<AboutSection />
-			
-			<div className="alert alert-info">
-				{store.message ? (
-					<span>{store.message}</span>
-				) : (
-					<span className="text-danger">
-						Loading message from the backend (make sure your python 🐍 backend is running)...
-					</span>
-				)}
-			</div>
-			
 		</div>
 	);
 }; 

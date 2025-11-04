@@ -38,6 +38,7 @@ import UserLoginPage from './pages/UserLoginPage';
 import TerminosPage from './pages/TerminosPage';
 import PrivacidadPage from './pages/PrivacidadPage';
 import AdminClientUsers from './pages/admin/AdminClientUsers';
+import PaymentProcessing from "./pages/PaymentProcessing";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -59,6 +60,7 @@ export const router = createBrowserRouter(
         
         {/* ✅ NUEVAS RUTAS DE PAGO */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-processing" element={<PaymentProcessing />} />
         <Route path="/payment-failure" element={<PaymentFailure />} />
         <Route path="/payment-pending" element={<PaymentPending />} />
         

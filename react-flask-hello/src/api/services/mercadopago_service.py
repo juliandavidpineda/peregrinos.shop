@@ -77,7 +77,7 @@ class MercadoPagoService:
                 "notification_url": f"{backend_url}/api/mercadopago-webhook",
                 
                 # 🆕 Nombre que aparece en el resumen de tarjeta
-                #"statement_descriptor": "PEREGRINOS SHOP",
+                "statement_descriptor": "PEREGRINOS SHOP",
                 
                 # 🆕 Métodos de pago excluidos (opcional)
                 # "payment_methods": {

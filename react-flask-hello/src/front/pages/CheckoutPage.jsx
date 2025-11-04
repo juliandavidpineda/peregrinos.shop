@@ -35,65 +35,69 @@ const CheckoutPage = () => {
   const shipping = subtotal > 200000 ? 0 : 10000;
   const total = subtotal + shipping;
 
-  const handleShippingSubmit = async (e) => {
-    e.preventDefault();
-    setIsProcessing(true);
+// En tu CheckoutPage.jsx, actualiza la parte donde rediriges:
 
-    try {
-      // Crear orden en el backend
-      const orderData = {
-        customer_name: formData.nombre,
-        customer_email: formData.email,
-        customer_phone: formData.telefono,
-        customer_address: formData.direccion,
-        customer_city: formData.ciudad,
-        customer_department: formData.departamento,
-        customer_postal_code: formData.codigoPostal,
-        items: cartItems,
-        subtotal: subtotal,
-        shipping: shipping,
-        total: total
-      };
+const handleShippingSubmit = async (e) => {
+  e.preventDefault();
+  setIsProcessing(true);
 
-      const result = await orderService.createOrder(orderData);
-      setOrderId(result.order.id);
+  try {
+    // Crear orden en el backend
+    const orderData = {
+      customer_name: formData.nombre,
+      customer_email: formData.email,
+      customer_phone: formData.telefono,
+      customer_address: formData.direccion,
+      customer_city: formData.ciudad,
+      customer_department: formData.departamento,
+      customer_postal_code: formData.codigoPostal,
+      items: cartItems,
+      subtotal: subtotal,
+      shipping: shipping,
+      total: total
+    };
 
-      // ✅ MIGRACIÓN COMPLETA: Mercado Pago en lugar de Wompi
-      const paymentResult = await paymentService.createPayment(
-        total,
-        result.order.id,
-        formData.email,
-        formData.nombre,
-        cartItems  // ✅ NUEVO: items para Mercado Pago
+    const result = await orderService.createOrder(orderData);
+    const orderId = result.order.id;
+    setOrderId(orderId);
+
+    // Crear pago en Mercado Pago
+    const paymentResult = await paymentService.createPayment(
+      total,
+      orderId,
+      formData.email,
+      formData.nombre,
+      cartItems
+    );
+
+    console.log('🔗 Payment Result:', paymentResult);
+
+    if (paymentResult.success) {
+      // 🆕 Guardar order_id en localStorage
+      localStorage.setItem('pending_order_id', orderId);
+      
+      // 🆕 Abrir Mercado Pago en NUEVA PESTAÑA
+      window.open(
+        paymentResult.sandbox_init_point || paymentResult.init_point || paymentResult.payment_url,
+        '_blank'
       );
-
-      console.log('🔗 Payment Result:', paymentResult);
-     
-      if (paymentResult.success) {
-        if (paymentResult.sandbox_init_point) {
-          console.log('🎯 Redirigiendo a Sandbox:', paymentResult.sandbox_init_point);
-          window.location.href = paymentResult.sandbox_init_point;
-        } else if (paymentResult.init_point) {
-          console.log('🎯 Redirigiendo a Producción:', paymentResult.init_point);
-          window.location.href = paymentResult.init_point;
-        } else if (paymentResult.payment_url) {
-          // Fallback para compatibilidad
-          console.log('🎯 Redirigiendo a payment_url:', paymentResult.payment_url);
-          window.location.href = paymentResult.payment_url;
-        } else {
-          throw new Error('No se recibió URL de pago válida');
-        }
-      } else {
-        throw new Error(paymentResult.error || 'Error al crear el enlace de pago');
-      }
-
-    } catch (error) {
-      console.error('Error creating order:', error);
-      alert(`Error al procesar el pedido: ${error.message}`);
-    } finally {
-      setIsProcessing(false);
+      
+      // 🆕 Redirigir a página de verificación en la pestaña actual
+      setTimeout(() => {
+        navigate(`/payment-processing?order_id=${orderId}`);
+      }, 1000);
+      
+    } else {
+      throw new Error(paymentResult.error || 'Error al crear el enlace de pago');
     }
-  };
+
+  } catch (error) {
+    console.error('Error creating order:', error);
+    alert(`Error al procesar el pedido: ${error.message}`);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   const handleInputChange = (e) => {
     setFormData({
