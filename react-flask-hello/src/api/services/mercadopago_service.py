@@ -44,7 +44,7 @@ class MercadoPagoService:
                 })
             
             frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-            backend_url = os.getenv('BACKEND_URL', 'http://localhost:3001')
+            backend_url = os.getenv('https://brave-views-invite.loca.lt')
             
             preference_data = {
                 "items": mp_items,

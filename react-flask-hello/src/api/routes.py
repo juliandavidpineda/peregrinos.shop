@@ -2296,41 +2296,187 @@ def verify_mercadopago_payment():
             
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
+# =============================================================================
+# WEBHOOK DE MERCADO PAGO - PRODUCCIÓN READY
+# =============================================================================
 
-# Webhook para Mercado Pago
 @api.route('/mercadopago-webhook', methods=['POST'])
 def mercadopago_webhook():
-    """Webhook para recibir notificaciones de Mercado Pago"""
+    """
+    Webhook para recibir notificaciones de Mercado Pago
+    Este endpoint será llamado automáticamente por MP cuando cambie el estado del pago
+    """
     try:
-        payload = request.json
-        print("📩 Mercado Pago Webhook recibido:", payload)
+        # Obtener datos del webhook
+        payload = request.get_json() if request.is_json else {}
+        query_params = request.args.to_dict()
         
-        # Mercado Pago envía el ID del pago
+        print("="*60)
+        print("🔔 WEBHOOK RECIBIDO DE MERCADO PAGO")
+        print(f"📦 Body: {payload}")
+        print(f"🔗 Query params: {query_params}")
+        print("="*60)
+        
+        # Obtener tipo de notificación
+        notification_type = payload.get('type') or query_params.get('type')
+        
+        # Solo procesar notificaciones de pago
+        if notification_type != 'payment':
+            print(f"ℹ️ Notificación ignorada, tipo: {notification_type}")
+            return jsonify({'status': 'ignored'}), 200
+        
+        # Obtener payment_id (puede venir en diferentes formatos)
+        payment_id = None
         if 'data' in payload and 'id' in payload['data']:
             payment_id = payload['data']['id']
-            
-            # CORREGIR: Usar la instancia global
-            from .services.mercadopago_service import mercado_pago_service
-            
-            # Obtener información del pago
-            result = mercado_pago_service.get_payment(payment_id)
-            if result['success']:
-                payment_data = result['payment']
-                order_id = payment_data.get('external_reference')
-                status = payment_data.get('status')
-                
-                if status == 'approved' and order_id:
-                    order = Order.query.get(order_id)
-                    if order and order.status != OrderStatusEnum.CONFIRMED:
-                        order.status = OrderStatusEnum.CONFIRMED
-                        db.session.commit()
-                        print(f"✅ Order {order_id} confirmed via Mercado Pago webhook")
+        elif 'id' in payload:
+            payment_id = payload['id']
+        elif 'data.id' in query_params:
+            payment_id = query_params['data.id']
         
-        return jsonify({'status': 'success'}), 200
+        if not payment_id:
+            print("⚠️ No se encontró payment_id")
+            return jsonify({'status': 'no_payment_id'}), 200
+        
+        print(f"💳 Payment ID: {payment_id}")
+        
+        # Obtener información del pago desde Mercado Pago
+        from .services.mercadopago_service import mercado_pago_service
+        result = mercado_pago_service.get_payment(payment_id)
+        
+        if not result.get('success'):
+            print(f"❌ Error obteniendo pago: {result.get('error')}")
+            return jsonify({'status': 'error'}), 200
+        
+        payment_data = result['payment']
+        
+        # Extraer información relevante
+        payment_status = payment_data.get('status')
+        status_detail = payment_data.get('status_detail')
+        order_id = payment_data.get('external_reference')
+        transaction_amount = payment_data.get('transaction_amount')
+        payment_method = payment_data.get('payment_method_id')
+        
+        print(f"📊 Estado: {payment_status}")
+        print(f"📊 Detalle: {status_detail}")
+        print(f"💰 Monto: {transaction_amount} {payment_data.get('currency_id')}")
+        print(f"🏦 Método: {payment_method}")
+        print(f"🔖 Order ID: {order_id}")
+        
+        if not order_id:
+            print("⚠️ No se encontró external_reference (order_id)")
+            return jsonify({'status': 'no_reference'}), 200
+        
+        # Buscar la orden
+        order = Order.query.filter_by(id=order_id).first()
+        
+        if not order:
+            print(f"⚠️ Orden {order_id} no encontrada")
+            return jsonify({'status': 'order_not_found'}), 200
+        
+        # Actualizar orden según el estado del pago
+        if payment_status == 'approved':
+            print("✅ PAGO APROBADO - Actualizando orden")
+            
+            # Actualizar orden
+            order.status = OrderStatusEnum.CONFIRMED
+            order.payment_id = str(payment_id)
+            order.payment_status = 'approved'
+            order.payment_method = payment_method
+            
+            # Guardar en BD
+            try:
+                db.session.commit()
+                print(f"✅ Orden {order_id} actualizada a CONFIRMED")
+                
+                # 📧 Enviar email de confirmación
+                try:
+                    from .services.email_service import send_order_confirmation_email
+                    email_sent = send_order_confirmation_email(order)
+                    if email_sent:
+                        print(f"📧 Email enviado a {order.customer_info.get('email')}")
+                    else:
+                        print(f"⚠️ Email no pudo ser enviado")
+                except ImportError:
+                    print("⚠️ Servicio de email no disponible")
+                except Exception as email_error:
+                    print(f"❌ Error enviando email: {email_error}")
+                
+            except Exception as db_error:
+                print(f"❌ Error guardando en BD: {db_error}")
+                db.session.rollback()
+                return jsonify({'status': 'db_error'}), 200
+                
+        elif payment_status == 'pending':
+            print("⏳ PAGO PENDIENTE")
+            order.payment_id = str(payment_id)
+            order.payment_status = 'pending'
+            db.session.commit()
+            
+        elif payment_status == 'rejected':
+            print("❌ PAGO RECHAZADO")
+            order.payment_id = str(payment_id)
+            order.payment_status = 'rejected'
+            order.status = OrderStatusEnum.CANCELLED
+            db.session.commit()
+            
+        elif payment_status == 'cancelled':
+            print("🚫 PAGO CANCELADO")
+            order.payment_id = str(payment_id)
+            order.payment_status = 'cancelled'
+            order.status = OrderStatusEnum.CANCELLED
+            db.session.commit()
+        
+        print(f"✅ Webhook procesado exitosamente")
+        print("="*60)
+        
+        # IMPORTANTE: Siempre responder 200 OK
+        return jsonify({'status': 'received'}), 200
         
     except Exception as e:
-        print(f"❌ Mercado Pago Webhook error: {e}")
-        return jsonify({'error': str(e)}), 400
+        print(f"❌ Error crítico en webhook: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        
+        # Aún así responder 200 para evitar reintentos infinitos
+        return jsonify({'status': 'error', 'message': str(e)}), 200
+
+
+# =============================================================================
+# ENDPOINT PARA VERIFICAR ESTADO DE ORDEN (usado por polling del frontend)
+# =============================================================================
+
+@api.route('/order/<order_id>/status', methods=['GET'])
+def get_order_status(order_id):
+    """
+    Obtener estado actual de una orden
+    Usado por el sistema de polling del frontend
+    """
+    try:
+        order = Order.query.filter_by(id=order_id).first()
+        
+        if not order:
+            return jsonify({'error': 'Order not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'order': {
+                'id': order.id,
+                'status': order.status.value if hasattr(order.status, 'value') else str(order.status),
+                'payment_status': getattr(order, 'payment_status', 'pending'),
+                'payment_id': getattr(order, 'payment_id', None),
+                'payment_method': getattr(order, 'payment_method', None),
+                'total': float(order.total) if order.total else 0,
+                'customer_info': order.customer_info,
+                'items': order.items,
+                'created_at': order.created_at.isoformat() if hasattr(order, 'created_at') and order.created_at else None
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo estado de orden: {e}")
+        return jsonify({'error': str(e)}), 500
     
 
 # =============================================================================
