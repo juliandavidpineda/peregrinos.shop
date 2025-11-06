@@ -2477,6 +2477,37 @@ def get_order_status(order_id):
     except Exception as e:
         print(f"❌ Error obteniendo estado de orden: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+#PRUEBA DEL IPN MP
+# ESTE SÍ va en la raíz:
+@api.route('/', methods=['GET', 'POST'])
+def root():
+    if request.method == 'POST':
+        print("✅ POST en raíz recibido!")
+        return jsonify({"status": "accepted"}), 200
+    return jsonify({"message": "API running"})
+@api.route('/', methods=['GET', 'POST'])
+def handle_root():
+    if request.method == 'POST':
+        print("🎯 IPN RECIBIDO EN RAÍZ!")
+        return jsonify({"status": "accepted"}), 200
+    else:
+        return jsonify({"message": "Peregrinos Shop API running"})
+    
+# Después de todas las rutas, agrega:
+@api.after_request
+def log_routes(response):
+    if request.endpoint:
+        print(f"📍 Ruta accedida: {request.endpoint} - Método: {request.method}")
+    else:
+        print(f"❌ Ruta NO encontrada: {request.path} - Método: {request.method}")
+    return response
+
+@api.route('/ipn-test', methods=['POST'])
+def ipn_test():
+    print("🎯 IPN Test recibido")
+    return jsonify({"status": "accepted"}), 200
     
 
 # =============================================================================

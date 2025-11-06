@@ -71,7 +71,7 @@ class MercadoPagoService:
                     "failure": f"{frontend_url}/checkout?order_id={order_id}",
                     "pending": f"{frontend_url}/payment-pending?order_id={order_id}"
                 },
-                #"auto_return": "approved",
+                "auto_return": "approved",
                 
                 "external_reference": order_id,
                 "notification_url": f"{backend_url}/api/mercadopago-webhook",
