@@ -2,7 +2,7 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directory 
-from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum 
+from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum, Saint 
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -16,6 +16,7 @@ from flask import current_app, send_from_directory
 
 from api.services.google_auth import GoogleAuthService
 from functools import wraps
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 api = Blueprint('api', __name__)
 
@@ -2689,3 +2690,170 @@ def check_legal_terms_status(user_id):
     except Exception as e:
         print(f"❌ Error checking terms: {str(e)}")
         return jsonify({'error': str(e)}), 400
+    
+
+# =============================================================================
+# SAINTS ENDPOINTS
+# =============================================================================
+
+@api.route('/saints', methods=['GET'])
+def get_saints():
+    """Obtener todos los santos activos (público)"""
+    try:
+        saints = Saint.query.filter_by(is_active=True).all()
+        
+        return jsonify({
+            'success': True,
+            'saints': [saint.serialize_short() for saint in saints],
+            'count': len(saints)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo santos: {e}")
+        return jsonify({'error': 'Error al obtener la lista'}), 500
+
+@api.route('/saints/featured', methods=['GET'])
+def get_featured_saints():
+    """Obtener santos destacados (público)"""
+    try:
+        saints = Saint.query.filter_by(is_active=True, featured=True).all()
+        
+        return jsonify({
+            'success': True,
+            'saints': [saint.serialize_short() for saint in saints],
+            'count': len(saints)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo santos destacados: {e}")
+        return jsonify({'error': 'Error al obtener santos destacados'}), 500
+
+@api.route('/saints/<saint_id>', methods=['GET'])
+def get_saint(saint_id):
+    """Obtener un santo específico por ID (público)"""
+    try:
+        saint = Saint.query.filter_by(id=saint_id, is_active=True).first()
+        
+        if not saint:
+            return jsonify({'error': 'Santo no encontrado'}), 404
+            
+        return jsonify({
+            'success': True,
+            'saint': saint.serialize()
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo santo: {e}")
+        return jsonify({'error': 'Error al obtener el santo'}), 500
+
+@api.route('/saints', methods=['POST'])
+#@jwt_required()
+def create_saint():
+    """Crear nuevo santo (admin only)"""
+    try:
+        #current_user = get_jwt_identity()
+        #if not current_user.get('is_admin'):
+        #    return jsonify({'error': 'Acceso no autorizado'}), 403
+            
+        data = request.get_json()
+        
+        # Validaciones básicas
+        if not data.get('name') or not data.get('feast_day') or not data.get('summary'):
+            return jsonify({'error': 'Nombre, fecha de festividad y resumen son requeridos'}), 400
+        
+        # Crear nuevo santo
+        new_saint = Saint(
+            name=data['name'],
+            feast_day=data['feast_day'],
+            summary=data['summary'],
+            biography=data.get('biography'),
+            image=data.get('image'),
+            birth_date=data.get('birth_date'),
+            death_date=data.get('death_date'),
+            canonization_date=data.get('canonization_date'),
+            patronage=data.get('patronage'),
+            featured=data.get('featured', False)
+        )
+        
+        db.session.add(new_saint)
+        db.session.commit()
+        
+        print(f"✅ Santo creado: {new_saint.name}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Santo creado exitosamente',
+            'saint': new_saint.serialize()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error creando santo: {e}")
+        return jsonify({'error': 'Error al crear el santo'}), 500
+
+@api.route('/saints/<saint_id>', methods=['PUT'])
+#@jwt_required()
+def update_saint(saint_id):
+    """Actualizar santo existente (admin only)"""
+    try:
+        #current_user = get_jwt_identity()
+        #if not current_user.get('is_admin'):
+        #    return jsonify({'error': 'Acceso no autorizado'}), 403
+            
+        saint = Saint.query.get(saint_id)
+        if not saint:
+            return jsonify({'error': 'Santo no encontrado'}), 404
+            
+        data = request.get_json()
+        
+        # Actualizar campos permitidos
+        update_fields = ['name', 'feast_day', 'summary', 'biography', 'image', 
+                        'birth_date', 'death_date', 'canonization_date', 'patronage', 'featured']
+        
+        for field in update_fields:
+            if field in data:
+                setattr(saint, field, data[field])
+        
+        db.session.commit()
+        
+        print(f"✅ Santo actualizado: {saint.name}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Santo actualizado exitosamente',
+            'saint': saint.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error actualizando santo: {e}")
+        return jsonify({'error': 'Error al actualizar el santo'}), 500
+
+@api.route('/saints/<saint_id>', methods=['DELETE'])
+#@jwt_required()
+def delete_saint(saint_id):
+    """Eliminar santo (soft delete - admin only)"""
+    try:
+        #current_user = get_jwt_identity()
+        #if not current_user.get('is_admin'):
+            #return jsonify({'error': 'Acceso no autorizado'}), 403
+            
+        saint = Saint.query.get(saint_id)
+        if not saint:
+            return jsonify({'error': 'Santo no encontrado'}), 404
+            
+        # Soft delete
+        saint.is_active = False
+        db.session.commit()
+        
+        print(f"✅ Santo eliminado: {saint.name}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Santo eliminado exitosamente'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error eliminando santo: {e}")
+        return jsonify({'error': 'Error al eliminar el santo'}), 500

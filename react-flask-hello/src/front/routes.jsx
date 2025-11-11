@@ -39,6 +39,7 @@ import TerminosPage from './pages/TerminosPage';
 import PrivacidadPage from './pages/PrivacidadPage';
 import AdminClientUsers from './pages/admin/AdminClientUsers';
 import PaymentProcessing from "./pages/PaymentProcessing";
+import AdminSaints from "./pages/admin/AdminSaints";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -57,14 +58,14 @@ export const router = createBrowserRouter(
         <Route path="/santoral" element={<SantoralPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="about" element={<AboutPage />} />
-        
+
         {/* ✅ NUEVAS RUTAS DE PAGO */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/payment-processing" element={<PaymentProcessing />} />
         <Route path="/payment-failure" element={<PaymentFailure />} />
         <Route path="/payment-pending" element={<PaymentPending />} />
-        
-        <Route path="/login" element={<UserLoginPage  />} />
+
+        <Route path="/login" element={<UserLoginPage />} />
         <Route path="/terminos" element={<TerminosPage />} />
         <Route path="/privacidad" element={<PrivacidadPage />} />
       </Route>
@@ -105,6 +106,11 @@ export const router = createBrowserRouter(
         <Route path="reviews" element={
           <ProtectedRoute allowedRoles={['editor', 'content_manager', 'superadmin']}>
             <AdminReviews />
+          </ProtectedRoute>
+        } />
+        <Route path="saints" element={
+          <ProtectedRoute>
+            <AdminSaints />
           </ProtectedRoute>
         } />
       </Route>

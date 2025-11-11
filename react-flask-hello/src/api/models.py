@@ -559,3 +559,67 @@ class Review(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+    
+
+class Saint(db.Model):
+    __tablename__ = 'saints'
+    
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    
+    # Información básica del santo
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    feast_day: Mapped[str] = mapped_column(String(100), nullable=False)  # "4 de Octubre"
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    biography: Mapped[str] = mapped_column(Text, nullable=True)  # Biografía completa opcional
+    
+    # Imágenes
+    image: Mapped[str] = mapped_column(String(500), nullable=True)
+    
+    # Información adicional
+    birth_date: Mapped[str] = mapped_column(String(100), nullable=True)  # "1182"
+    death_date: Mapped[str] = mapped_column(String(100), nullable=True)  # "1226"
+    canonization_date: Mapped[str] = mapped_column(String(100), nullable=True)
+    patronage: Mapped[str] = mapped_column(Text, nullable=True)  # "Animales, ecología"
+    
+    # Control de estado
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    featured: Mapped[bool] = mapped_column(Boolean, default=False)  # Para destacar en homepage
+    
+    # Fechas de auditoría
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relaciones (si en el futuro quieres con productos, etc.)
+    # products: Mapped[List["Product"]] = relationship("Product", back_populates="saint")
+
+    def __repr__(self):
+        return f'<Saint {self.name}>'
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'feast_day': self.feast_day,
+            'summary': self.summary,
+            'biography': self.biography,
+            'image': self.image,
+            'birth_date': self.birth_date,
+            'death_date': self.death_date,
+            'canonization_date': self.canonization_date,
+            'patronage': self.patronage,
+            'is_active': self.is_active,
+            'featured': self.featured,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+    def serialize_short(self):
+        """Versión simplificada para listas/grids"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'feast_day': self.feast_day,
+            'summary': self.summary,
+            'image': self.image,
+            'featured': self.featured
+        }

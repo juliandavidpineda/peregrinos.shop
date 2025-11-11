@@ -10,6 +10,7 @@ from api.models import db
 from api.routes import api
 from api.admin import setup_admin
 from api.commands import setup_commands
+from flask_jwt_extended import JWTManager
 
 
 # from models import Person
@@ -31,6 +32,49 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MIGRATE = Migrate(app, db, compare_type=True)
 db.init_app(app)
+
+# =============================================================================
+# JWT CONFIGURATION
+# =============================================================================
+
+# JWT Configuration
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "peregrinos-super-secret-key-2025-dev")
+app.config["JWT_TOKEN_LOCATION"] = ["headers"]
+app.config["JWT_HEADER_NAME"] = "Authorization" 
+app.config["JWT_HEADER_TYPE"] = "Bearer"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 86400  # 24 horas
+
+# Inicializar JWT Manager
+jwt = JWTManager(app)
+
+# Callback para verificar si el token está en la blacklist (si implementas logout)
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    # Aquí puedes agregar lógica para verificar tokens revocados
+    return False
+
+# Callback personalizado para errores de JWT
+@jwt.unauthorized_loader
+def unauthorized_callback(error):
+    return jsonify({
+        "error": "Acceso no autorizado",
+        "message": "Token de acceso faltante o inválido"
+    }), 401
+
+@jwt.invalid_token_loader
+def invalid_token_callback(error):
+    return jsonify({
+        "error": "Token inválido", 
+        "message": "El token proporcionado es inválido"
+    }), 422
+
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({
+        "error": "Token expirado",
+        "message": "El token ha expirado, por favor inicia sesión nuevamente"
+    }), 401
+
 
 # add the admin
 setup_admin(app)
@@ -72,7 +116,7 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=PORT, debug=True)
 
 # =============================================================================
-# SERVIR ARCHIVOS UPLOADS - RUTA CRÍTICA
+# SERVIR ARCHIVOS UPLOADS
 # =============================================================================
 
 @app.route('/api/uploads/<path:folder>/<path:filename>')
