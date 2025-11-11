@@ -2328,6 +2328,9 @@ def mercadopago_webhook():
         
         # Obtener payment_id (puede venir en diferentes formatos)
         payment_id = None
+        if 'id' in query_params:
+            payment_id = query_params['id']
+            print(f"🎯 Payment ID desde query params (prueba MP): {payment_id}")
         if 'data' in payload and 'id' in payload['data']:
             payment_id = payload['data']['id']
         elif 'id' in payload:

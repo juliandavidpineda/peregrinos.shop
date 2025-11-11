@@ -47,61 +47,49 @@ export const orderService = {
     }
   },
 
-  // Obtener orden por ID
-  getOrder: async (orderId) => {
-    try {
-      console.log(`📥 Obteniendo orden: ${orderId}`);
-      console.log(`🔗 URL completa: ${API_URL}/api/orders/${orderId}`);
-      
-      const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
-      console.log(`📊 Response status: ${response.status}`);
-      console.log(`📊 Response ok: ${response.ok}`);
+// Obtener orden por ID - SOLUCIÓN DEFINITIVA
+getOrder: async (orderId) => {
+  try {
+    console.log(`📥 Obteniendo orden: ${orderId}`);
+    
+    // ✅ VOLVER al endpoint original que SÍ funciona
+    const response = await fetch(`${API_URL}/api/orders/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
-        throw new Error(`Error fetching order: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('✅ Datos RAW recibidos del backend:', JSON.stringify(data, null, 2));
-      
-      // 🔍 Verificar estructura de datos
-      console.log('🔍 Estructura detectada:');
-      console.log('  - Tiene "order"?', !!data.order);
-      console.log('  - Tiene "customer_info"?', !!data.customer_info);
-      console.log('  - Tiene "items"?', !!data.items);
-      
-      if (data.order) {
-        console.log('  - order.customer_info?', !!data.order.customer_info);
-        console.log('  - order.items?', !!data.order.items);
-      }
-
-      // ✅ Normalizar la respuesta
-      // Algunos backends devuelven { order: {...} }, otros devuelven directamente {...}
-      const normalizedData = data.order ? data : { order: data };
-      
-      console.log('✅ Datos normalizados:', JSON.stringify(normalizedData, null, 2));
-      
-      return normalizedData;
-    } catch (error) {
-      console.error('❌ Error completo al obtener orden:', error);
-      console.error('❌ Stack trace:', error.stack);
-      throw error;
+    if (!response.ok) {
+      throw new Error(`Error fetching order: ${response.status}`);
     }
-  },
 
+    const data = await response.json();
+    
+    // ✅ AGREGAR campos de pago si no vienen (para compatibilidad)
+    const normalizedData = data.order ? data : { order: data };
+    
+    // Asegurar que existan los campos que el polling necesita
+    if (normalizedData.order) {
+      normalizedData.order.payment_status = normalizedData.order.payment_status || 'pending';
+      normalizedData.order.payment_id = normalizedData.order.payment_id || null;
+      normalizedData.order.payment_method = normalizedData.order.payment_method || null;
+    }
+
+    console.log('✅ Orden con campos de pago:', normalizedData);
+    return normalizedData;
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo orden:', error);
+    throw error;
+  }
+},
   // Obtener todas las órdenes (admin)
   getAllOrders: async (token) => {
     try {
       console.log('📥 Obteniendo todas las órdenes');
-      
+
       const response = await fetch(`${API_URL}/api/orders`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -128,7 +116,7 @@ export const orderService = {
   updateOrderStatus: async (orderId, status, token) => {
     try {
       console.log(`📝 Actualizando orden ${orderId} a estado: ${status}`);
-      
+
       const response = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
         method: 'PUT',
         headers: {
