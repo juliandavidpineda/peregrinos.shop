@@ -23,6 +23,7 @@ export const ProductGrid = () => {
       
       if (response.success && response.products) {
         const formattedProducts = response.products.map((product, index) => ({
+          ...product,
           id: product.id,
           name: product.name,
           price: product.price,

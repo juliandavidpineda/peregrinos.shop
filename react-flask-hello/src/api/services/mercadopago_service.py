@@ -71,10 +71,10 @@ class MercadoPagoService:
                     "failure": f"{frontend_url}/checkout?order_id={order_id}",
                     "pending": f"{frontend_url}/payment-pending?order_id={order_id}"
                 },
-                "auto_return": "approved",
+                #"auto_return": "approved",
                 
                 "external_reference": order_id,
-                "notification_url": f"{backend_url}/api/mercadopago-webhook",
+                "notification_url": "https://peregrinos-test.loca.lt/api/mercadopago-webhook",
                 
                 # 🆕 Nombre que aparece en el resumen de tarjeta
                 "statement_descriptor": "PEREGRINOS SHOP",

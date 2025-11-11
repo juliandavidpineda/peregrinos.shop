@@ -2,6 +2,22 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const CartContext = createContext();
 
+// ✅ FUNCIÓN PARA NORMALIZAR IMÁGENES - MISMAS REGLAS EN TODOS LADOS
+const normalizeImageUrl = (imagePath) => {
+  if (!imagePath) {
+    return 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop';
+  }
+  
+  if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  
+  // ✅ USAR LA MISMA URL BASE QUE EN ProductDetailPage
+  const API_BASE_URL = 'http://localhost:3001';
+  const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${API_BASE_URL}/api${cleanPath}`;
+};
+
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -37,12 +53,15 @@ export const CartProvider = ({ children }) => {
         );
       }
       
+      // ✅ SOLUCIÓN: Normalizar la URL de la imagen ANTES de guardar
+      const normalizedImage = normalizeImageUrl(product.images?.[0]);
+      
       return [...prev, {
         id: Date.now(),
         productId: product.id,
         name: product.name,
         price: product.price,
-        image: product.images?.[0] || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=300&h=300&fit=crop',
+        image: normalizedImage, // ✅ URL ya normalizada
         size,
         quantity
       }];

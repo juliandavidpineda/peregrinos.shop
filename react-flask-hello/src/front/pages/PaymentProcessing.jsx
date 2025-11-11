@@ -13,65 +13,101 @@ const PaymentProcessing = () => {
   const orderId = searchParams.get('order_id');
   const maxAttempts = 60; // 60 intentos = 5 minutos (cada 5 segundos)
 
-  useEffect(() => {
-    if (!orderId) {
-      navigate('/');
-      return;
-    }
+useEffect(() => {
+  if (!orderId) {
+    navigate('/');
+    return;
+  }
 
-    let interval;
+  let interval;
+  let isComponentMounted = true;
+  let consecutiveErrors = 0;
+  const MAX_CONSECUTIVE_ERRORS = 3;
+  
+  const checkPaymentStatus = async () => {
+    if (!isComponentMounted) return;
     
-    const checkPaymentStatus = async () => {
-      try {
-        console.log(`🔍 Verificando pago... Intento ${attempts + 1}/${maxAttempts}`);
-        
-        // Verificar el estado de la orden
-        const response = await orderService.getOrder(orderId);
-        const order = response.order;
-        
-        console.log('📦 Estado de la orden:', order.status);
-        
-        // Si el pago fue aprobado, redirigir
-        if (order.payment_status === 'approved' || order.status === 'paid') {
-          console.log('✅ Pago confirmado! Redirigiendo...');
-          clearInterval(interval);
-          navigate(`/payment-success?order_id=${orderId}`);
-          return;
-        }
-        
-        // Si fue rechazado
-        if (order.payment_status === 'rejected' || order.status === 'payment_failed') {
-          console.log('❌ Pago rechazado');
-          clearInterval(interval);
-          navigate('/checkout');
-          return;
-        }
-        
-        setAttempts(prev => prev + 1);
-        
-        // Si llegamos al máximo de intentos
-        if (attempts >= maxAttempts) {
-          console.log('⏱️ Tiempo de espera agotado');
-          clearInterval(interval);
-          navigate(`/payment-pending?order_id=${orderId}`);
-        }
-        
-      } catch (error) {
-        console.error('Error verificando pago:', error);
-        setAttempts(prev => prev + 1);
+    try {
+      console.log(`🔍 Verificando pago... Intento ${attempts + 1}/${maxAttempts}`);
+      
+      const response = await orderService.getOrder(orderId);
+      const order = response.order;
+      
+      console.log('📦 Estado de la orden:', order.status);
+      
+      // Resetear contador de errores en éxito
+      consecutiveErrors = 0;
+      
+      // 🆕 VERIFICAR SI YA ESTAMOS EN PAYMENT-SUCCESS
+      if (window.location.pathname.includes('payment-success')) {
+        console.log('🛑 Ya estamos en payment-success, deteniendo polling...');
+        clearInterval(interval);
+        return;
       }
-    };
-    
-    // Verificar inmediatamente
-    checkPaymentStatus();
-    
-    // Luego verificar cada 5 segundos
-    interval = setInterval(checkPaymentStatus, 5000);
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [orderId, attempts, navigate]);
+      
+      // Estados de aprobación
+      if (order.payment_status === 'approved' || order.status === 'paid' || order.status === 'CONFIRMED') {
+        console.log('✅ Pago confirmado! Redirigiendo...');
+        clearInterval(interval);
+        navigate(`/payment-success?order_id=${orderId}`);
+        return;
+      }
+      
+      // Estados de rechazo
+      if (order.payment_status === 'rejected' || order.status === 'payment_failed' || order.status === 'CANCELLED') {
+        console.log('❌ Pago rechazado');
+        clearInterval(interval);
+        navigate('/checkout');
+        return;
+      }
+      
+      setAttempts(prev => prev + 1);
+      
+      if (attempts >= maxAttempts) {
+        console.log('⏱️ Tiempo de espera agotado');
+        clearInterval(interval);
+        navigate(`/payment-pending?order_id=${orderId}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error verificando pago:', error);
+      setAttempts(prev => prev + 1);
+      consecutiveErrors++;
+      
+      // 🆕 VERIFICAR SI YA ESTAMOS EN PAYMENT-SUCCESS (incluso en error)
+      if (window.location.pathname.includes('payment-success')) {
+        console.log('🛑 Ya estamos en payment-success, deteniendo polling...');
+        clearInterval(interval);
+        return;
+      }
+      
+      // Esperar más en errores consecutivos
+      const errorDelay = Math.min(consecutiveErrors * 2000, 10000); // Máximo 10 segundos
+      await new Promise(resolve => setTimeout(resolve, errorDelay));
+      
+      // Si muchos errores seguidos, redirigir
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        console.log('⚠️ Muchos errores consecutivos, redirigiendo...');
+        clearInterval(interval);
+        navigate(`/payment-pending?order_id=${orderId}`);
+      }
+      
+      // Si máximo de intentos
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        navigate(`/payment-pending?order_id=${orderId}`);
+      }
+    }
+  };
+  
+  setTimeout(() => checkPaymentStatus(), 1000);
+  interval = setInterval(checkPaymentStatus, 8000); // 8 segundos entre checks
+  
+  return () => {
+    isComponentMounted = false;
+    if (interval) clearInterval(interval);
+  };
+}, [orderId, attempts, navigate, maxAttempts]);
 
   return (
     <div className="min-h-screen bg-[#f7f2e7] flex items-center justify-center">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
 import ProductHero from '../components/product-detail/ProductHero';
 import ProductImageGallery from '../components/product-detail/ProductImageGallery';
 import ProductInfo from '../components/product-detail/ProductInfo';
@@ -9,6 +10,7 @@ import ReviewForm from '../components/reviews/ReviewForm';
 import ReviewListPublic from '../components/reviews/ReviewListPublic';
 import { productService } from '../services/productService';
 import { reviewService } from '../services/reviewService';
+import toast from 'react-hot-toast';
 
 const ProductDetailPage = () => {
   const { productId } = useParams();
@@ -174,14 +176,16 @@ const ProductDetailPage = () => {
 
   const handleAddToCart = () => {
     if (!selectedSize) {
-      alert('Por favor selecciona una talla');
+      toast.error('Por favor selecciona una talla');
       return;
     }
 
     if (!product.in_stock) {
-      alert('Este producto está agotado');
+      toast.error('Este producto está agotado');
       return;
     }
+
+    addToCart(product, selectedSize, quantity);
 
     const cartItem = {
       id: product.id,
@@ -193,7 +197,7 @@ const ProductDetailPage = () => {
     };
 
     console.log('Agregar al carrito:', cartItem);
-    alert(`¡${product.name} agregada al carrito!`);
+    toast.success(`¡${product.name} agregada al carrito!`);
   };
 
   const handleBuyNow = () => {
