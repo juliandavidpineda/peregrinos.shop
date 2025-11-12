@@ -4,13 +4,29 @@ import { useNavigate } from 'react-router-dom';
 
 const SantoralPage = () => {
     const [saints, setSaints] = useState([]);
+    const [filteredSaints, setFilteredSaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
         loadSaints();
     }, []);
+
+    useEffect(() => {
+        // Filtrar santos cuando cambia el término de búsqueda
+        if (searchTerm.trim() === '') {
+            setFilteredSaints(saints);
+        } else {
+            const filtered = saints.filter(saint =>
+                saint.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (saint.summary && saint.summary.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (saint.feast_day && saint.feast_day.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+            setFilteredSaints(filtered);
+        }
+    }, [searchTerm, saints]);
 
     const loadSaints = async () => {
         try {
@@ -19,6 +35,7 @@ const SantoralPage = () => {
 
             if (response.success) {
                 setSaints(response.saints);
+                setFilteredSaints(response.saints);
             } else {
                 setError('Error al cargar el santoral');
             }
@@ -31,11 +48,9 @@ const SantoralPage = () => {
     };
 
     const formatDate = (dateString) => {
-        // Si ya está formateado como "4 de Octubre", lo dejamos igual
         if (dateString && dateString.includes('de')) {
             return dateString;
         }
-        // Podemos agregar más lógica de formateo si es necesario
         return dateString || 'Fecha no especificada';
     };
 
@@ -84,6 +99,39 @@ const SantoralPage = () => {
             <div className="py-12">
                 <div className="container mx-auto px-4">
 
+                    {/* Buscador */}
+                    <div className="max-w-2xl mx-auto mb-12">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Buscar santos por nombre, fecha o descripción..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full px-6 py-4 pl-14 bg-white border border-[#779385]/30 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2f4823]/50 focus:border-[#2f4823] text-[#2f4823] placeholder-[#779385]/60 font-serif text-lg"
+                            />
+                            <div className="absolute left-5 top-1/2 transform -translate-y-1/2 text-[#779385]">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="absolute right-5 top-1/2 transform -translate-y-1/2 text-[#779385] hover:text-[#2f4823] transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+                        {searchTerm && (
+                            <p className="text-center text-[#779385] mt-3">
+                                {filteredSaints.length === 0 ? 'No se encontraron santos' : `${filteredSaints.length} santo${filteredSaints.length !== 1 ? 's' : ''} encontrado${filteredSaints.length !== 1 ? 's' : ''}`}
+                            </p>
+                        )}
+                    </div>
+
                     {/* Introducción */}
                     <div className="text-center mb-12">
                         <p className="text-xl text-[#779385] max-w-2xl mx-auto">
@@ -92,19 +140,27 @@ const SantoralPage = () => {
                     </div>
 
                     {/* Grid de Santos */}
-                    {saints.length === 0 ? (
+                    {filteredSaints.length === 0 ? (
                         <div className="text-center py-12">
-                            <div className="text-6xl mb-4 text-[#779385]">📖</div>
+                            <div className="text-6xl mb-4 text-[#779385]">🔍</div>
                             <h3 className="text-xl font-semibold text-[#2f4823] mb-2">
-                                Santoral en preparación
+                                {searchTerm ? 'No se encontraron resultados' : 'Santoral en preparación'}
                             </h3>
                             <p className="text-[#779385]">
-                                Estamos trabajando en contenido inspirador para ti
+                                {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Estamos trabajando en contenido inspirador para ti'}
                             </p>
+                            {searchTerm && (
+                                <button
+                                    onClick={() => setSearchTerm('')}
+                                    className="mt-4 bg-[#2f4823] text-white px-6 py-2 rounded-lg hover:bg-[#1f3219] transition-colors"
+                                >
+                                    Ver todos los santos
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                            {saints.map((saint) => (
+                            {filteredSaints.map((saint) => (
                                 <div key={saint.id} className="bg-white rounded-2xl shadow-sm border border-[#779385]/20 overflow-hidden hover:shadow-md transition-shadow group">
                                     <div className="h-48 bg-[#f7f2e7] overflow-hidden">
                                         <img

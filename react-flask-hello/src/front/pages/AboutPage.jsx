@@ -6,7 +6,7 @@ const AboutPage = () => {
             {/* Hero */}
             <div className="bg-gradient-to-br from-[#2f4823] to-[#1f3219] text-white py-20 px-4 text-center rounded-b-lg">
                 <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 font-serif leading-tight">
-  Nuestra <span className="italic font-normal">Historia</span>
+ 
   <br />
   <span className="text-[#f7f2e7]">
     De <span className="text-[#c08410]">Heridas</span> a
@@ -38,7 +38,7 @@ const AboutPage = () => {
                                 </div>
                             </div>
                             <p className="text-[#2f4823] text-lg leading-relaxed">
-                                Nuestra historia no es la de emprendedores expertos, sino la de <strong>una familia en búsqueda</strong> 
+                                Nuestra historia no es la de emprendedores expertos, sino la de <strong>una familia en búsqueda, </strong> 
                                 cuyo camino espiritual ha sido marcado por heridas, búsquedas y finalmente, <strong>encuentro</strong>.
                             </p>
                         </div>
@@ -128,7 +128,7 @@ const AboutPage = () => {
                                     <div className="flex items-start gap-3">
                                         <span className="text-blue-600 mt-1">📣</span>
                                         <div>
-                                            <strong className="text-[#2f4823]">Testimonio</strong> de que la belleza de la fe puede vestirse con dignidad
+                                            <strong className="text-[#2f4823]">Testimonio</strong> que la belleza de la fe puede vestirse con dignidad
                                         </div>
                                     </div>
                                     <div className="flex items-start gap-3">

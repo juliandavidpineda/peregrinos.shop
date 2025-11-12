@@ -45,21 +45,27 @@ export const Footer = () => {
           </div>
 
           {/* Columna 2: Enlaces Rápidos */}
-          <div>
-            <h3 className="text-xl font-bold font-serif mb-6 text-[#f7f2e7]">Navegación</h3>
-            <ul className="space-y-3">
-              {['Inicio', 'Productos', 'Nuestra Historia', 'Santoral', 'Contacto'].map((item) => (
-                <li key={item}>
-                  <a 
-                    href="#" 
-                    className="text-[#f7f2e7]/80 hover:text-white transition-all duration-300 hover:translate-x-2 block py-1 rounded-lg hover:bg-white/10 px-3"
-                  >
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+<div>
+  <h3 className="text-xl font-bold font-serif mb-6 text-[#f7f2e7]">Navegación</h3>
+  <ul className="space-y-3">
+    {[
+      { name: 'Inicio', path: '/' },
+      { name: 'Productos', path: '/shop-page' },
+      { name: 'Nuestra Historia', path: '/about' },
+      { name: 'Santoral', path: '/santoral' },
+      { name: 'Contacto', path: '/contact' }
+    ].map((item) => (
+      <li key={item.name}>
+        <button 
+          onClick={() => navigate(item.path)}
+          className="text-[#f7f2e7]/80 hover:text-white transition-all duration-300 hover:translate-x-2 block py-1 rounded-lg hover:bg-white/10 px-3 w-full text-left"
+        >
+          {item.name}
+        </button>
+      </li>
+    ))}
+  </ul>
+</div>
 
           {/* Columna 3: Contacto */}
           <div>
@@ -95,7 +101,8 @@ export const Footer = () => {
         <div className="py-8 text-center">
           <p className="text-[#f7f2e7]/60">
             © 2025 Peregrinos.Shop - Todos los derechos reservados. 
-            <span className="block mt-2 text-sm">Hecho con 💚 y Fe</span>
+            <span className="block mt-2 text-sm">Hecho con ❤️‍🔥 y Fe</span>
+            <span className="block mt-2 text-sm">Desarrollado por 🖥️ StormTech</span>
           </p>
         </div>
 

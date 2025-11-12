@@ -159,8 +159,8 @@ const ContactPage = () => {
                                     Información de Contacto
                                 </h3>
                                 <div className="space-y-3 text-[#2f4823]">
-                                    <p>📧 info@peregrinos.shop</p>
-                                    <p>📞 +57 1 234 5678</p>
+                                    <p>📧 hola@peregrinos.shop</p>
+                                    <p>📞 +57 350 527 9066</p>
                                     <p>📍 Bogotá, Colombia</p>
                                 </div>
                             </div>
@@ -172,7 +172,7 @@ const ContactPage = () => {
                                 <div className="space-y-2 text-[#2f4823] text-sm">
                                     <p>Lunes a Viernes: 8:00 AM - 6:00 PM</p>
                                     <p>Sábados: 9:00 AM - 2:00 PM</p>
-                                    <p>Domingos: Cerrado</p>
+                                    <p>Domingos: Día del señor</p>
                                 </div>
                             </div>
 
