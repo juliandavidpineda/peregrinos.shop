@@ -40,6 +40,8 @@ import PrivacidadPage from './pages/PrivacidadPage';
 import AdminClientUsers from './pages/admin/AdminClientUsers';
 import PaymentProcessing from "./pages/PaymentProcessing";
 import AdminSaints from "./pages/admin/AdminSaints";
+import SaintDetailPage from "./pages/SaintDetailPage";
+import AdminContactMessages from "./pages/admin/AdminContactMessages";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -58,6 +60,7 @@ export const router = createBrowserRouter(
         <Route path="/santoral" element={<SantoralPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="/saint/:saintId" element={<SaintDetailPage />} />
 
         {/* ✅ NUEVAS RUTAS DE PAGO */}
         <Route path="/payment-success" element={<PaymentSuccess />} />
@@ -111,6 +114,11 @@ export const router = createBrowserRouter(
         <Route path="saints" element={
           <ProtectedRoute>
             <AdminSaints />
+          </ProtectedRoute>
+        } />
+        <Route path="contact-messages" element={
+          <ProtectedRoute>
+            <AdminContactMessages />
           </ProtectedRoute>
         } />
       </Route>

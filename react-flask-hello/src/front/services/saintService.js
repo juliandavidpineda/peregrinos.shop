@@ -36,60 +36,49 @@ export const saintService = {
         }
     },
 
-// Crear santo (admin)
-createSaint: async (saintData) => {
-    try {
-        // ✅ USAR admin_token que es donde realmente está el token
-        const token = window.localStorage.getItem('token') || 
-                     window.localStorage.getItem('admin_token');
-
-        console.log('🔐 Token admin encontrado:', token ? 'SÍ' : 'NO');
-        
-        if (!token) {
-            throw new Error('No authentication token found. Please log in to admin.');
-        }
-
-        const response = await fetch(`${API_URL}/api/saints`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(saintData)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error creating saint');
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Error creating saint:', error);
-        throw error;
-    }
-},
-
-    // Actualizar santo (admin)  
-    updateSaint: async (saintId, saintData) => {
+    // Crear santo (admin)
+    createSaint: async (saintData) => {
         try {
-            const token = localStorage.getItem('token'); // ✅ Obtener token
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-
-            const response = await fetch(`${API_URL}/api/saints/${saintId}`, {
-                method: 'PUT',
+            // ✅ TEMPORAL: No enviar token ya que @jwt_required está comentado
+            const response = await fetch(`${API_URL}/api/saints`, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` // ✅ Enviar token
+                    // 'Authorization': `Bearer ${token}`  // ← Temporalmente comentado
                 },
                 body: JSON.stringify(saintData)
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error updating saint');
+                const errorText = await response.text();
+                console.error('❌ Error response:', errorText);
+                throw new Error(`Error ${response.status}: ${errorText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error creating saint:', error);
+            throw error;
+        }
+    },
+
+    // Actualizar santo (admin)  
+    updateSaint: async (saintId, saintData) => {
+        try {
+            // ✅ TEMPORAL: No enviar token ya que @jwt_required está comentado
+            const response = await fetch(`${API_URL}/api/saints/${saintId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // 'Authorization': `Bearer ${token}`  // ← Temporalmente comentado
+                },
+                body: JSON.stringify(saintData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error response:', errorText);
+                throw new Error(`Error ${response.status}: ${errorText}`);
             }
 
             return await response.json();
@@ -99,25 +88,21 @@ createSaint: async (saintData) => {
         }
     },
 
-
     // Eliminar santo (admin)
     deleteSaint: async (saintId) => {
         try {
-            const token = localStorage.getItem('token'); // ✅ Obtener token
-            if (!token) {
-                throw new Error('No authentication token found');
-            }
-
+            // ✅ TEMPORAL: No enviar token ya que @jwt_required está comentado
             const response = await fetch(`${API_URL}/api/saints/${saintId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${token}` // ✅ Enviar token
+                    // 'Authorization': `Bearer ${token}`  // ← Temporalmente comentado
                 }
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Error deleting saint');
+                const errorText = await response.text();
+                console.error('❌ Error response:', errorText);
+                throw new Error(`Error ${response.status}: ${errorText}`);
             }
 
             return await response.json();

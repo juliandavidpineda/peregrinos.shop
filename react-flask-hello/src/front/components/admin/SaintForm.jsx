@@ -31,6 +31,11 @@ const SaintForm = ({ saint, onClose, onSuccess }) => {
         patronage: saint.patronage || '',
         featured: saint.featured || false
       });
+      // ✅ DEBUG: Ver qué datos llegan realmente
+    console.log('🔍 Datos del santo para editar:', saint);
+    console.log('🔍 Biography:', saint.biography);
+    console.log('🔍 Birth date:', saint.birth_date);
+    console.log('🔍 Death date:', saint.death_date);
     }
   }, [saint]);
 

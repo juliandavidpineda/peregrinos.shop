@@ -2,7 +2,7 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 from flask import Flask, request, jsonify, url_for, Blueprint, send_from_directory 
-from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum, Saint 
+from api.models import db, User, AdminUser, Product, Category, Order, OrderItem, PageContent, Banner, ContactLead, Review, UserActivityLog, UserRoleEnum, Saint, ContactMessage 
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -2857,3 +2857,102 @@ def delete_saint(saint_id):
         db.session.rollback()
         print(f"❌ Error eliminando santo: {e}")
         return jsonify({'error': 'Error al eliminar el santo'}), 500
+    
+# =============================================================================
+# CONTACT MESSAGES ENDPOINTS
+# =============================================================================
+
+@api.route('/contact-messages', methods=['POST'])
+def create_contact_message():
+    """Recibir mensajes de contacto desde la página"""
+    try:
+        data = request.get_json()
+        
+        # Validaciones
+        if not data.get('name') or not data.get('email') or not data.get('message'):
+            return jsonify({'error': 'Nombre, email y mensaje son requeridos'}), 400
+        
+        # Crear mensaje
+        new_message = ContactMessage(
+            name=data['name'],
+            email=data['email'],
+            message_type=data.get('message_type', 'sugerencia'),
+            message=data['message']
+        )
+        
+        db.session.add(new_message)
+        db.session.commit()
+        
+        print(f"✅ Mensaje de contacto recibido: {new_message.name} - {new_message.message_type}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Mensaje enviado correctamente. Te responderemos pronto.',
+            'message_id': new_message.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error recibiendo mensaje de contacto: {e}")
+        return jsonify({'error': 'Error al enviar el mensaje'}), 500
+    
+# =============================================================================
+# CONTACT MESSAGES ADMIN ENDPOINTS
+# =============================================================================
+
+@api.route('/contact-messages', methods=['GET'])
+# @jwt_required()  # Temporalmente comentado
+def get_contact_messages():
+    """Obtener todos los mensajes de contacto (admin)"""
+    try:
+        # current_user = get_jwt_identity()
+        # if not current_user.get('is_admin'):
+        #     return jsonify({'error': 'Acceso no autorizado'}), 403
+
+        messages = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'messages': [message.serialize() for message in messages],
+            'count': len(messages)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo mensajes: {e}")
+        return jsonify({'error': 'Error al obtener los mensajes'}), 500
+
+@api.route('/contact-messages/<message_id>', methods=['PUT'])
+# @jwt_required()  # Temporalmente comentado
+def update_contact_message(message_id):
+    """Actualizar estado de mensaje (admin)"""
+    try:
+        # current_user = get_jwt_identity()
+        # if not current_user.get('is_admin'):
+        #     return jsonify({'error': 'Acceso no autorizado'}), 403
+
+        message = ContactMessage.query.get(message_id)
+        if not message:
+            return jsonify({'error': 'Mensaje no encontrado'}), 404
+            
+        data = request.get_json()
+        
+        # Actualizar campos permitidos
+        if 'is_read' in data:
+            message.is_read = data['is_read']
+        if 'status' in data:
+            message.status = data['status']
+        
+        db.session.commit()
+        
+        print(f"✅ Mensaje actualizado: {message.id} - {message.status}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Estado actualizado correctamente',
+            'message_data': message.serialize()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error actualizando mensaje: {e}")
+        return jsonify({'error': 'Error al actualizar el mensaje'}), 500

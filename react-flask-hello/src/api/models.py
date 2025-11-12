@@ -623,3 +623,38 @@ class Saint(db.Model):
             'image': self.image,
             'featured': self.featured
         }
+    
+class ContactMessage(db.Model):
+    __tablename__ = 'contact_messages'
+    
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    
+    # Información del contacto
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str] = mapped_column(String(120), nullable=False)
+    message_type: Mapped[str] = mapped_column(String(50), nullable=False)  # sugerencia, opinion, oracion, etc.
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # Estado del mensaje
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(20), default='pending')  # pending, responded, archived
+    
+    # Fechas
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f'<ContactMessage {self.name} - {self.message_type}>'
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'message_type': self.message_type,
+            'message': self.message,
+            'is_read': self.is_read,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

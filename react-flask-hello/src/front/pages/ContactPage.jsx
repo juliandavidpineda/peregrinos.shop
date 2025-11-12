@@ -1,17 +1,34 @@
 import React, { useState } from 'react';
+import { contactService } from '../services/contactService';
 
 const ContactPage = () => {
     const [formData, setFormData] = useState({
-        nombre: '',
+        name: '',
         email: '',
-        tipo: 'sugerencia',
-        mensaje: ''
+        message_type: 'sugerencia',
+        message: ''
     });
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        alert('¡Gracias por tu mensaje! Te responderemos pronto.');
-        setFormData({ nombre: '', email: '', tipo: 'sugerencia', mensaje: '' });
+        setLoading(true);
+        setMessage('');
+
+        try {
+            const response = await contactService.sendMessage(formData);
+            
+            if (response.success) {
+                setMessage('¡Gracias por tu mensaje! Te responderemos pronto.');
+                setFormData({ name: '', email: '', message_type: 'sugerencia', message: '' });
+            }
+        } catch (error) {
+            console.error('Error enviando mensaje:', error);
+            setMessage('Error al enviar el mensaje. Por favor, intenta nuevamente.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleChange = (e) => {
@@ -50,6 +67,17 @@ const ContactPage = () => {
                                 Envíanos un Mensaje
                             </h2>
 
+                            {/* Mensaje de estado */}
+                            {message && (
+                                <div className={`p-4 rounded-lg mb-6 ${
+                                    message.includes('Error') 
+                                        ? 'bg-red-50 text-red-700 border border-red-200' 
+                                        : 'bg-green-50 text-green-700 border border-green-200'
+                                }`}>
+                                    {message}
+                                </div>
+                            )}
+
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div>
                                     <label className="block text-[#2f4823] font-semibold mb-2">
@@ -57,9 +85,9 @@ const ContactPage = () => {
                                     </label>
                                     <input
                                         type="text"
-                                        name="nombre"
+                                        name="name"
                                         required
-                                        value={formData.nombre}
+                                        value={formData.name}
                                         onChange={handleChange}
                                         className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] transition-all"
                                         placeholder="Tu nombre completo"
@@ -86,13 +114,14 @@ const ContactPage = () => {
                                         Tipo de Mensaje
                                     </label>
                                     <select
-                                        name="tipo"
-                                        value={formData.tipo}
+                                        name="message_type"
+                                        value={formData.message_type}
                                         onChange={handleChange}
                                         className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] transition-all"
                                     >
                                         <option value="sugerencia">Sugerencia</option>
                                         <option value="opinion">Opinión</option>
+                                        <option value="oracion">Pedir una oración</option>
                                         <option value="reclamo">Reclamo</option>
                                         <option value="info">Solicitud de Info</option>
                                     </select>
@@ -103,10 +132,10 @@ const ContactPage = () => {
                                         Mensaje *
                                     </label>
                                     <textarea
-                                        name="mensaje"
+                                        name="message"
                                         required
                                         rows="5"
-                                        value={formData.mensaje}
+                                        value={formData.message}
                                         onChange={handleChange}
                                         className="w-full px-4 py-3 border border-[#779385]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2f4823] transition-all"
                                         placeholder="Escribe tu mensaje aquí..."
@@ -115,9 +144,10 @@ const ContactPage = () => {
 
                                 <button
                                     type="submit"
-                                    className="w-full bg-[#2f4823] text-white py-4 rounded-xl font-semibold hover:bg-[#1f3219] transition-colors"
+                                    disabled={loading}
+                                    className="w-full bg-[#2f4823] text-white py-4 rounded-xl font-semibold hover:bg-[#1f3219] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Enviar Mensaje
+                                    {loading ? 'Enviando...' : 'Enviar Mensaje'}
                                 </button>
                             </form>
                         </div>
@@ -129,7 +159,7 @@ const ContactPage = () => {
                                     Información de Contacto
                                 </h3>
                                 <div className="space-y-3 text-[#2f4823]">
-                                    <p>📧 info@tiendacatolica.com</p>
+                                    <p>📧 info@peregrinos.shop</p>
                                     <p>📞 +57 1 234 5678</p>
                                     <p>📍 Bogotá, Colombia</p>
                                 </div>

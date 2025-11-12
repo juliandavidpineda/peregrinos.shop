@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { saintService } from '../services/saintService';
+import { useNavigate } from 'react-router-dom';
 
 const SantoralPage = () => {
     const [saints, setSaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         loadSaints();
@@ -14,7 +16,7 @@ const SantoralPage = () => {
         try {
             setLoading(true);
             const response = await saintService.getSaints();
-            
+
             if (response.success) {
                 setSaints(response.saints);
             } else {
@@ -55,7 +57,7 @@ const SantoralPage = () => {
                     <div className="text-6xl mb-4 text-[#779385]">⚠️</div>
                     <h2 className="text-2xl font-serif font-bold text-[#2f4823] mb-4">Error al cargar</h2>
                     <p className="text-[#779385] mb-6">{error}</p>
-                    <button 
+                    <button
                         onClick={loadSaints}
                         className="bg-[#2f4823] text-white px-6 py-3 rounded-lg hover:bg-[#1f3219] transition-colors"
                     >
@@ -124,11 +126,8 @@ const SantoralPage = () => {
                                         <p className="text-[#2f4823] text-sm leading-relaxed line-clamp-3">
                                             {saint.summary}
                                         </p>
-                                        <button 
-                                            onClick={() => {
-                                                // Aquí podríamos navegar a una página individual del santo
-                                                alert(`Biografía de ${saint.name} - Próximamente disponible`);
-                                            }}
+                                        <button
+                                            onClick={() => navigate(`/saint/${saint.id}`)}
                                             className="w-full mt-4 bg-[#2f4823] text-white py-2 rounded-lg font-semibold hover:bg-[#1f3219] transition-colors group-hover:scale-105 transform transition-transform"
                                         >
                                             Conocer Historia
