@@ -5,9 +5,15 @@ const AboutPage = () => {
         <div className="min-h-screen bg-[#f7f2e7]">
             {/* Hero */}
             <div className="bg-gradient-to-br from-[#2f4823] to-[#1f3219] text-white py-20 px-4 text-center rounded-b-lg">
-                <h1 className="font-serif font-bold text-4xl md:text-5xl mb-4">
-                    Nuestra Historia: De Heridas a Esperanza
-                </h1>
+                <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 font-serif leading-tight">
+  Nuestra <span className="italic font-normal">Historia</span>
+  <br />
+  <span className="text-[#f7f2e7]">
+    De <span className="text-[#c08410]">Heridas</span> a
+  </span>
+  <br />
+  <span className="text-[#c08410]">Esperanza</span>
+</h1>
                 <div className="mb-6">
                     <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-full text-sm font-semibold border border-white/30">
                         <span className="text-amber-200">✞</span>

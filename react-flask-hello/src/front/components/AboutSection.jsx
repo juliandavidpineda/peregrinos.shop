@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import stella2 from '../assets/img/aboutSection/stella2.webp';
+import { useNavigate } from 'react-router-dom';
 
 export const AboutSection = () => {
   const [offset, setOffset] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const sectionRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -92,7 +94,12 @@ export const AboutSection = () => {
         </div>
 
         <div className="mt-6 md:mt-8">
-          <button className="bg-[#f7f2e7] hover:bg-white text-[#2f4823] font-bold py-3 md:py-4 px-6 md:px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 text-base md:text-lg shadow-lg">
+          <button className="bg-[#f7f2e7] hover:bg-white text-[#2f4823] font-bold py-3 md:py-4 px-6 md:px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 text-base md:text-lg shadow-lg"
+            onClick={() => {
+                  navigate('/about');
+                }}
+          >
+            
             Conoce Nuestra Historia
           </button>
         </div>

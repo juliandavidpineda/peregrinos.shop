@@ -1,8 +1,10 @@
 import React from 'react';
 import logo_blanco from '../assets/img/branding/logo_blanco.png'
+import { useNavigate } from 'react-router-dom';
 
 
 export const Footer = () => {
+  const navigate = useNavigate();
   return (
     <footer className="bg-[#2f4823] text-white mt-20 rounded-t-3xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -65,11 +67,11 @@ export const Footer = () => {
             <div className="space-y-4">
               <div className="flex items-center space-x-3 text-[#f7f2e7]/80">
                 <span className="bg-[#779385] w-8 h-8 rounded-lg flex items-center justify-center">📧</span>
-                <span>info@peregrinos.shop</span>
+                <span>hola@peregrinos.shop</span>
               </div>
               <div className="flex items-center space-x-3 text-[#f7f2e7]/80">
                 <span className="bg-[#779385] w-8 h-8 rounded-lg flex items-center justify-center">📞</span>
-                <span>+57 300 123 4567</span>
+                <span>+57 350 527 9066</span>
               </div>
               <div className="flex items-center space-x-3 text-[#f7f2e7]/80">
                 <span className="bg-[#779385] w-8 h-8 rounded-lg flex items-center justify-center">📍</span>
@@ -78,7 +80,9 @@ export const Footer = () => {
             </div>
 
             {/* Botón de Oración */}
-            <button className="mt-6 bg-[#f7f2e7] text-[#2f4823] hover:bg-white hover:scale-105 transform transition-all duration-300 font-bold py-3 px-6 rounded-2xl shadow-lg w-full">
+            <button className="mt-6 bg-[#f7f2e7] text-[#2f4823] hover:bg-white hover:scale-105 transform transition-all duration-300 font-bold py-3 px-6 rounded-2xl shadow-lg w-full"
+              onClick={() => navigate('/contact')}
+            >
               🙏 Pedir una Oración
             </button>
           </div>

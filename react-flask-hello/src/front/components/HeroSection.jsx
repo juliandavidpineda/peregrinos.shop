@@ -1,7 +1,9 @@
 import React from 'react';
 import san_jose from '../assets/img/hero/san_jose.webp'
+import { useNavigate } from 'react-router-dom';
 
 export const HeroSection = () => {
+  const navigate = useNavigate()
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden rounded-b-3xl">
 
@@ -57,12 +59,16 @@ export const HeroSection = () => {
 
         {/* Botones de Acción */}
         <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-          <button className="bg-[#f7f2e7] text-[#2f4823] hover:bg-white hover:scale-105 transform transition-all duration-300 font-bold text-lg px-12 py-4 rounded-2xl shadow-2xl flex items-center space-x-3">
+          <button className="bg-[#f7f2e7] text-[#2f4823] hover:bg-white hover:scale-105 transform transition-all duration-300 font-bold text-lg px-12 py-4 rounded-2xl shadow-2xl flex items-center space-x-3"
+            onClick={() => navigate('/shop-page')}
+          >
             <span>🛍️</span>
             <span>Descubrir Colección</span>
           </button>
 
-          <button className="border-2 border-white text-white hover:bg-white hover:text-[#2f4823] transform hover:scale-105 transition-all duration-300 font-bold text-lg px-12 py-4 rounded-2xl flex items-center space-x-3">
+          <button className="border-2 border-white text-white hover:bg-white hover:text-[#2f4823] transform hover:scale-105 transition-all duration-300 font-bold text-lg px-12 py-4 rounded-2xl flex items-center space-x-3"
+            onClick={() => navigate('about')}
+          >
             <span>📖</span>
             <span>Nuestra Historia</span>
           </button>

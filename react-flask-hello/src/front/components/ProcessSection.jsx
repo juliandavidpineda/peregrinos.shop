@@ -3,6 +3,7 @@ import algodon from '../assets/img/process/algodon.webp';
 import artista from '../assets/img/process/artista.webp';
 import costura from '../assets/img/process/costura.webp';
 import serigrafia from '../assets/img/process/serigrafia.webp';
+import toast from 'react-hot-toast';
 
 export const ProcessSection = () => {
   const sections = [
@@ -117,8 +118,11 @@ export const ProcessSection = () => {
         </div>
         {/* CTA */}
         <div className="text-center mt-16">
-          <button className="bg-[#2f4823] hover:bg-[#1f371c] text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 text-lg">
+          <button className="bg-[#2f4823] hover:bg-[#1f371c] text-white font-bold py-4 px-8 rounded-2xl transition-all duration-300 transform hover:scale-105 text-lg"
+            onClick={() => toast.success('Próximante, podrás ver videos de cómo lo hacemos :-)')}
+          >
             Ver Proceso Completo
+
           </button>
         </div>
 
