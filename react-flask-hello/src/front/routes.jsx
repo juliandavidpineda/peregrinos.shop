@@ -16,6 +16,7 @@ import OrderConfirmation from "./pages/OrderConfirmation";
 import SantoralPage from "./pages/SantoralPage";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
+import UserProfilePage from "./pages/UserProfilePage";
 
 // Nuevas importaciones para el panel admin
 import AdminLogin from "./pages/AdminLogin";
@@ -28,6 +29,7 @@ import AdminOrders from "./pages/admin/AdminOrders/AdminOrders";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReviews from "./pages/admin/AdminReviews";
 import ProtectedRoute from "./components/ProtectedRoute";
+import UserProtectedRoute from "./components/UserProtectedRoute";
 
 // Importar páginas de pago
 import PaymentSuccess from './components/checkout/PaymentSuccess';
@@ -61,6 +63,12 @@ export const router = createBrowserRouter(
         <Route path="/contact" element={<ContactPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="/saint/:saintId" element={<SaintDetailPage />} />
+        
+        <Route path="/mi-perfil" element={
+          <UserProtectedRoute>
+            <UserProfilePage />
+          </UserProtectedRoute>
+        } />
 
         {/* ✅ NUEVAS RUTAS DE PAGO */}
         <Route path="/payment-success" element={<PaymentSuccess />} />

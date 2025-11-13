@@ -36,7 +36,40 @@ class ApiService {
 
   // Métodos autenticados
   async authenticatedRequest(endpoint, options = {}) {
-    const token = localStorage.getItem('admin_token');
+    // ✅ SOLUCIÓN DEFINITIVA: Priorizar user_token para endpoints de usuario
+    const adminToken = localStorage.getItem('admin_token');
+    const userToken = localStorage.getItem('user_token');
+    
+    let token;
+    let tokenType = '';
+    
+    // Detectar qué token usar basado en el endpoint
+    if (endpoint.startsWith('/api/user/')) {
+      // Endpoints de usuario normal → PRIORIDAD user_token
+      if (userToken) {
+        token = userToken;
+        tokenType = 'USER_TOKEN';
+      } else if (adminToken) {
+        token = adminToken;
+        tokenType = 'ADMIN_TOKEN (fallback)';
+      }
+    } else {
+      // Otros endpoints → PRIORIDAD admin_token
+      if (adminToken) {
+        token = adminToken;
+        tokenType = 'ADMIN_TOKEN';
+      } else if (userToken) {
+        token = userToken;
+        tokenType = 'USER_TOKEN (fallback)';
+      }
+    }
+    
+    console.log("🔐 DEBUG API SERVICE:");
+    console.log("   - Endpoint:", endpoint);
+    console.log("   - admin_token:", adminToken ? "SÍ" : "NO");
+    console.log("   - user_token:", userToken ? "SÍ" : "NO");
+    console.log("   - Token usado:", tokenType);
+    console.log("   - Token valor:", token ? token.substring(0, 20) + "..." : "NONE");
     
     if (!token) {
       throw new Error('No authentication token found');

@@ -4,10 +4,12 @@ from google.auth.transport import requests
 import jwt
 from datetime import datetime, timedelta
 from api.models import db, User
+from api.utils import generate_token  # ✅ IMPORTAR la función centralizada
 
 class GoogleAuthService:
     def __init__(self):
         self.client_id = os.getenv('GOOGLE_CLIENT_ID', '')
+        # ⚠️ MANTENER por compatibilidad pero NO USAR para tokens
         self.secret_key = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-this')
     
     def verify_google_token(self, token):
@@ -54,19 +56,17 @@ class GoogleAuthService:
             }
     
     def generate_jwt_token(self, user_id, email):
-        """Generar JWT token para el usuario"""
+        """Generar JWT token para el usuario usando la función centralizada"""
         try:
-            payload = {
-                'user_id': user_id,
-                'email': email,
-                'exp': datetime.utcnow() + timedelta(days=7)
-            }
-            token = jwt.encode(payload, self.secret_key, algorithm='HS256')
+            # ✅ USAR generate_token del utils para consistencia
+            token = generate_token(user_id, 'user')
+            print(f"✅ JWT generado con sistema centralizado para user_id: {user_id}")
             return token
         except Exception as e:
             print(f"❌ Error generando JWT: {str(e)}")
             return None
 
+    # ✅ MANTENER TODO EL RESTO DEL CÓDIGO IGUAL
     def find_or_create_user(self, user_data, legal_data=None):
         try:
             print(f"🔍 Buscando usuario: {user_data['email']}")

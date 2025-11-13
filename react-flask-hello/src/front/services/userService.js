@@ -161,5 +161,87 @@ export const userService = {
       console.error('Error changing password:', error);
       throw error;
     }
+  },
+
+   // ✅ NUEVAS FUNCIONES PARA PERFIL DE USUARIO
+  async getUserProfile() {
+    try {
+      const response = await apiService.authenticatedRequest('/api/user/profile');
+      return response;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  },
+
+  async updateUserProfile(userData) {
+    try {
+      const response = await apiService.authenticatedRequest('/api/user/profile', {
+        method: 'PUT',
+        body: JSON.stringify(userData),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    }
+  },
+
+  async getUserOrders() {
+    try {
+      const response = await apiService.authenticatedRequest('/api/user/orders');
+      return response;
+    } catch (error) {
+      console.error('Error fetching user orders:', error);
+      throw error;
+    }
+  },
+
+  async getUserAddresses() {
+    try {
+      const response = await apiService.authenticatedRequest('/api/user/addresses');
+      return response;
+    } catch (error) {
+      console.error('Error fetching user addresses:', error);
+      throw error;
+    }
+  },
+
+  async addUserAddress(addressData) {
+    try {
+      const response = await apiService.authenticatedRequest('/api/user/addresses', {
+        method: 'POST',
+        body: JSON.stringify(addressData),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error adding user address:', error);
+      throw error;
+    }
+  },
+
+  async updateUserAddress(addressId, addressData) {
+    try {
+      const response = await apiService.authenticatedRequest(`/api/user/addresses/${addressId}`, {
+        method: 'PUT',
+        body: JSON.stringify(addressData),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error updating user address:', error);
+      throw error;
+    }
+  },
+
+  async deleteUserAddress(addressId) {
+    try {
+      const response = await apiService.authenticatedRequest(`/api/user/addresses/${addressId}`, {
+        method: 'DELETE',
+      });
+      return response;
+    } catch (error) {
+      console.error('Error deleting user address:', error);
+      throw error;
+    }
   }
 };

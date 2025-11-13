@@ -110,6 +110,200 @@ def admin_login():
         return jsonify({'message': str(e)}), 400
     
 # =============================================================================
+# USER PROFILE ENDPOINTS 
+# =============================================================================
+
+@api.route('/user/profile', methods=['GET', 'OPTIONS'])
+@token_required
+def get_user_profile(current_user_id, current_user_role):
+    """Obtener perfil del usuario autenticado"""
+    try:
+        print(f"🔍 DEBUG GET_USER_PROFILE:")
+        print(f"   - current_user_id: {current_user_id}")
+        print(f"   - current_user_role: {current_user_role}")
+
+        user = User.query.get(current_user_id)
+        
+        print(f"   - Usuario encontrado: {user}")
+        print(f"   - Usuario ID en DB: {user.id if user else 'NO ENCONTRADO'}")
+
+        if not user:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+        
+        return jsonify({
+            'success': True,
+            'user': user.serialize()
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en get_user_profile: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/profile', methods=['PUT', 'OPTIONS'])
+@token_required
+def update_user_profile(current_user_id, current_user_role):
+    """Actualizar perfil del usuario autenticado"""
+    try:
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
+        
+        data = request.get_json()
+        
+        # Campos actualizables
+        if 'name' in data:
+            user.name = data['name']
+        if 'phone' in data:
+            user.phone = data['phone']
+        
+        # Marketing emails
+        if 'marketing_emails' in data:
+            user.marketing_emails = data['marketing_emails']
+            if data['marketing_emails']:
+                user.marketing_emails_accepted_at = datetime.utcnow()
+        
+        # Preferences
+        if 'preferences' in data:
+            if user.preferences:
+                user.preferences = {**user.preferences, **data['preferences']}
+            else:
+                user.preferences = data['preferences']
+        
+        user.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'user': user.serialize()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error en update_user_profile: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/orders', methods=['GET', 'OPTIONS'])
+@token_required
+def get_user_orders(current_user_id, current_user_role):
+    """Obtener órdenes del usuario autenticado"""
+    try:
+        orders = Order.query.filter_by(user_id=current_user_id)\
+                           .order_by(Order.created_at.desc())\
+                           .all()
+        
+        return jsonify({
+            'success': True,
+            'orders': [order.serialize() for order in orders]
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en get_user_orders: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/addresses', methods=['GET', 'OPTIONS'])
+@token_required
+def get_user_addresses(current_user_id, current_user_role):
+    """Obtener direcciones del usuario autenticado"""
+    try:
+        # TODO: Implementar modelo de Address cuando esté disponible
+        addresses = []
+        
+        return jsonify({
+            'success': True,
+            'addresses': addresses
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en get_user_addresses: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/addresses', methods=['POST', 'OPTIONS'])
+@token_required
+def add_user_address(current_user_id, current_user_role):
+    """Agregar nueva dirección del usuario"""
+    try:
+        data = request.get_json()
+        
+        required_fields = ['alias', 'street', 'city', 'department', 'phone']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'El campo {field} es requerido'}), 400
+        
+        # Mock temporal - reemplazar cuando tengas modelo Address
+        import time
+        mock_address = {
+            'id': f"addr_{int(time.time())}",
+            'user_id': current_user_id,
+            'alias': data['alias'],
+            'street': data['street'],
+            'city': data['city'],
+            'department': data['department'],
+            'postal_code': data.get('postal_code', ''),
+            'phone': data['phone'],
+            'instructions': data.get('instructions', ''),
+            'is_primary': data.get('is_primary', False),
+            'created_at': datetime.utcnow().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'address': mock_address,
+            'message': 'Dirección agregada correctamente'
+        }), 201
+        
+    except Exception as e:
+        print(f"❌ Error en add_user_address: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/addresses/<address_id>', methods=['PUT', 'OPTIONS'])
+@token_required
+def update_user_address(current_user_id, current_user_role, address_id):
+    """Actualizar dirección del usuario"""
+    try:
+        data = request.get_json()
+        
+        # Mock temporal
+        mock_address = {
+            'id': address_id,
+            'user_id': current_user_id,
+            'alias': data.get('alias', ''),
+            'street': data.get('street', ''),
+            'city': data.get('city', ''),
+            'department': data.get('department', ''),
+            'postal_code': data.get('postal_code', ''),
+            'phone': data.get('phone', ''),
+            'instructions': data.get('instructions', ''),
+            'is_primary': data.get('is_primary', False),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        
+        return jsonify({
+            'success': True,
+            'address': mock_address,
+            'message': 'Dirección actualizada correctamente'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en update_user_address: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/addresses/<address_id>', methods=['DELETE', 'OPTIONS'])
+@token_required
+def delete_user_address(current_user_id, current_user_role, address_id):
+    """Eliminar dirección del usuario"""
+    try:
+        # Mock temporal
+        return jsonify({
+            'success': True,
+            'message': 'Dirección eliminada correctamente'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error en delete_user_address: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# =============================================================================
 # ADMIN CLIENT USERS ENDPOINTS (SOLO SUPERADMIN)
 # =============================================================================
 
@@ -2515,10 +2709,11 @@ def ipn_test():
     
 
 # =============================================================================
-# GOOGLE AUTH ENDPOINTS (MANTENER FUNCIONALIDAD EXISTENTE)
+# GOOGLE AUTH ENDPOINTS
 # =============================================================================
 from api.services.google_auth import GoogleAuthService
 from api.models import db, User
+from api.utils import generate_token, token_required
 import jwt
 from datetime import datetime
 
@@ -2548,13 +2743,14 @@ def google_auth():
         # Buscar o crear usuario en la base de datos (AHORA DEVUELVE is_new_user)
         user, is_new_user = google_service.find_or_create_user(user_data)
         
-        # Generar JWT token
-        jwt_token = google_service.generate_jwt_token(user.id, user.email)
+        # ✅ ACTUALIZADO: Usar generate_token() del utils.py
+        jwt_token = generate_token(user.id, 'user')  # Role 'user' para usuarios normales
         
         if not jwt_token:
             return jsonify({'error': 'Error generating token'}), 500
         
         print(f"✅ Autenticación exitosa para: {user.email}")
+        print(f"🔐 Token JWT generado con nuevo sistema para user_id: {user.id}")
         
         # ✅ NUEVO: Determinar si necesita aceptar términos
         needs_terms_acceptance = is_new_user or not (user.terms_accepted and user.privacy_policy_accepted)
@@ -2574,37 +2770,29 @@ def google_auth():
         return jsonify({'error': str(e)}), 400
 
 @api.route('/auth/user/me', methods=['GET'])
-def get_current_user():
+@token_required  # ✅ ACTUALIZADO: Usar el decorador mejorado
+def get_current_user(current_user_id, current_user_role):
     """Obtener información del usuario normal actual"""
     try:
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
+        # ✅ El decorador token_required ya verificó el token y nos pasa los parámetros
+        print(f"🔍 Buscando usuario con ID: {current_user_id}")
         
-        if not token:
-            return jsonify({'error': 'Token is required'}), 401
+        # Buscar usuario en la base de datos
+        user = User.query.get(current_user_id)
         
-        # Verificar token
-        google_service = GoogleAuthService()
-        try:
-            payload = jwt.decode(token, google_service.secret_key, algorithms=['HS256'])
-            user_id = payload['user_id']
-            
-            # Buscar usuario en la base de datos
-            user = User.query.get(user_id)
-            
-            if not user:
-                return jsonify({'error': 'User not found'}), 404
-            
-            return jsonify({
-                'success': True,
-                'user': user.serialize()
-            }), 200
-            
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token expired'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
+        if not user:
+            print(f"❌ Usuario no encontrado: {current_user_id}")
+            return jsonify({'error': 'User not found'}), 404
+        
+        print(f"✅ Usuario encontrado: {user.email}")
+        
+        return jsonify({
+            'success': True,
+            'user': user.serialize()
+        }), 200
             
     except Exception as e:
+        print(f"❌ Error obteniendo usuario actual: {str(e)}")
         return jsonify({'error': str(e)}), 400
 
 @api.route('/auth/user/logout', methods=['POST'])
@@ -2618,13 +2806,8 @@ def logout_user():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
 # =============================================================================
-# NUEVOS ENDPOINTS PARA TÉRMINOS LEGALES
-# =============================================================================
-
-# =============================================================================
-# NUEVOS ENDPOINTS PARA TÉRMINOS LEGALES (CON NOMBRES ÚNICOS)
+# ENDPOINTS PARA TÉRMINOS LEGALES
 # =============================================================================
 
 @api.route('/auth/accept-legal-terms', methods=['POST'])

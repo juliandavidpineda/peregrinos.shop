@@ -25,6 +25,12 @@ export const Navbar = () => {
     setIsMenuOpen(false);
   };
 
+  const handleProfile = () => {
+    navigate('/mi-perfil');
+    setIsUserMenuOpen(false);
+    setIsMenuOpen(false);
+  };
+
   if (loading) {
     return (
       <nav className="bg-[#f7f2e7] border-b border-[#2f4823]/20 sticky top-0 z-50">
@@ -136,7 +142,7 @@ export const Navbar = () => {
                   </span>
                 </button>
 
-                {/* Menú desplegable del usuario */}
+                {/* Menú desplegable del usuario - ACTUALIZADO */}
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-lg border border-[#2f4823]/20 py-2 z-50">
                     <div className="px-4 py-2 border-b border-[#2f4823]/10">
@@ -147,11 +153,20 @@ export const Navbar = () => {
                         {user.email}
                       </p>
                     </div>
+                    
+                    {/* ✅ NUEVA OPCIÓN: Mi Perfil */}
+                    <button
+                      onClick={handleProfile}
+                      className="block w-full text-left px-4 py-2 text-sm text-[#2f4823] hover:bg-[#2f4823] hover:text-white transition-colors duration-200"
+                    >
+                      👤 Mi Perfil
+                    </button>
+                    
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 border-t border-[#2f4823]/10"
                     >
-                      Cerrar Sesión
+                      🚪 Cerrar Sesión
                     </button>
                   </div>
                 )}
@@ -177,7 +192,7 @@ export const Navbar = () => {
           </div>
         </div>
 
-        {/* Menú Mobile */}
+        {/* Menú Mobile - ACTUALIZADO */}
         <div className={`lg:hidden transition-all duration-500 ease-in-out overflow-hidden ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="py-4 space-y-2 bg-white/95 backdrop-blur-sm rounded-2xl mt-2 border border-[#2f4823]/20 shadow-lg">
             {[
@@ -199,16 +214,33 @@ export const Navbar = () => {
               </button>
             ))}
 
+            {/* ✅ NUEVA OPCIÓN EN MÓVIL: Mi Perfil (solo si está logueado) */}
+            {isAuthenticated && user && (
+              <button
+                onClick={handleProfile}
+                className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10"
+              >
+                👤 Mi Perfil
+              </button>
+            )}
+
             {/* Búsqueda en menú móvil */}
-            <button className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10 mt-2">
+            <button className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10">
               🔍 Buscar
             </button>
 
-            {/* Opción de login en móvil - SOLO SI NO ESTÁ LOGUEADO */}
-            {!isAuthenticated && (
+            {/* Opción de login/cierre en móvil */}
+            {isAuthenticated ? (
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10"
+              >
+                🚪 Cerrar Sesión
+              </button>
+            ) : (
               <button
                 onClick={handleLogin}
-                className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10 mt-2"
+                className="block w-full text-left text-[#2f4823] hover:bg-[#2f4823] hover:text-white font-medium px-4 py-3 rounded-xl transition-all duration-300 transform hover:translate-x-2 mx-2 text-sm sm:text-base border-t border-[#2f4823]/10"
               >
                 Iniciar Sesión
               </button>

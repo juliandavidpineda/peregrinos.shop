@@ -63,6 +63,8 @@ class User(db.Model):
     email_verified: Mapped[bool] = mapped_column(Boolean(), default=False, nullable=True)  
     role: Mapped[str] = mapped_column(String(20), default='customer', nullable=True)  
     
+    phone: Mapped[str] = mapped_column(String(20), nullable=True)
+
     # Timestamps
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), nullable=True)  
     updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=True)  
@@ -83,6 +85,8 @@ class User(db.Model):
     total_orders: Mapped[int] = mapped_column(Integer, default=0, nullable=True)
     total_spent: Mapped[float] = mapped_column(Float, default=0.0, nullable=True)
     last_order_date: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
+
+    preferences: Mapped[dict] = mapped_column(JSON, nullable=True, default=dict)
     
     # Relaciones
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="user")
@@ -101,6 +105,8 @@ class User(db.Model):
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "phone": self.phone,
+            "preferences": self.preferences or {},
             # ✅ NUEVOS CAMPOS EN SERIALIZE
             "terms_accepted": self.terms_accepted or False,
             "terms_accepted_at": self.terms_accepted_at.isoformat() if self.terms_accepted_at else None,
