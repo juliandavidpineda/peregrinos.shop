@@ -6,7 +6,7 @@ const UserInfo = ({ user, onUpdate }) => {
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    birth_date: user?.birth_date || ''
+    birthdate: user?.birthdate || ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -81,7 +81,7 @@ const UserInfo = ({ user, onUpdate }) => {
               
               <div className="bg-white rounded-2xl p-4 border border-[#779385]/20">
                 <label className="block text-sm font-medium text-[#779385] mb-1">Fecha de nacimiento</label>
-                <p className="text-[#2f4823] font-semibold text-lg">{formatDate(user?.birth_date)}</p>
+                <p className="text-[#2f4823] font-semibold text-lg">{formatDate(user?.birthdate)}</p>
               </div>
             </div>
 
@@ -182,8 +182,8 @@ const UserInfo = ({ user, onUpdate }) => {
                 </label>
                 <input
                   type="date"
-                  name="birth_date"
-                  value={formData.birth_date}
+                  name="birthdate"
+                  value={formData.birthdate}
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-[#779385]/30 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-transparent transition-all duration-300"
                 />

@@ -151,11 +151,25 @@ def update_user_profile(current_user_id, current_user_role):
         
         data = request.get_json()
         
-        # Campos actualizables
         if 'name' in data:
             user.name = data['name']
         if 'phone' in data:
             user.phone = data['phone']
+
+        # FECHA DE CUMPLEAÑOS
+        if 'birthdate' in data:
+            try:
+                # Convertir string a datetime (formato: "YYYY-MM-DD")
+                if data['birthdate']:
+                    user.birthdate = datetime.fromisoformat(data['birthdate'])
+                else:
+                    user.birthdate = None
+            except ValueError as e:
+                print(f"⚠️ Formato de fecha inválido: {data['birthdate']}")
+                return jsonify({
+                    'success': False, 
+                    'error': 'Formato de fecha inválido. Use YYYY-MM-DD'
+                }), 400
         
         # Marketing emails
         if 'marketing_emails' in data:

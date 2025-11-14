@@ -64,6 +64,7 @@ class User(db.Model):
     role: Mapped[str] = mapped_column(String(20), default='customer', nullable=True)  
     
     phone: Mapped[str] = mapped_column(String(20), nullable=True)
+    birthdate: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
     # Timestamps
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), nullable=True)  
@@ -106,6 +107,7 @@ class User(db.Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "phone": self.phone,
+            "birthdate": self.birthdate.isoformat() if self.birthdate else None,
             "preferences": self.preferences or {},
             # ✅ NUEVOS CAMPOS EN SERIALIZE
             "terms_accepted": self.terms_accepted or False,

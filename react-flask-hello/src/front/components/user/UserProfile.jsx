@@ -5,6 +5,7 @@ const UserProfile = ({ user, onUpdate }) => {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
+    birthdate: user?.birthdate || '',
     preferences: user?.preferences || {
       email_notifications: true,
       marketing_emails: user?.marketing_emails || false,
@@ -16,7 +17,7 @@ const UserProfile = ({ user, onUpdate }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const result = await onUpdate(formData);
       if (result.success) {
@@ -33,7 +34,7 @@ const UserProfile = ({ user, onUpdate }) => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name.startsWith('preferences.')) {
       const prefKey = name.split('.')[1];
       setFormData(prev => ({
@@ -79,15 +80,20 @@ const UserProfile = ({ user, onUpdate }) => {
                 <p className="text-[#2f4823] font-semibold">{user?.phone || 'No especificado'}</p>
               </div>
               <div>
+                <label className="block text-sm font-medium text-[#779385] mb-1">Fecha de cumpleaños</label>
+                <p className="text-[#2f4823] font-semibold">
+                  {user?.birthdate ? new Date(user.birthdate).toLocaleDateString('es-ES') : 'No especificada'}
+                </p>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-[#779385] mb-1">Email</label>
                 <p className="text-[#2f4823] font-semibold">{user?.email}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-[#779385] mb-1">Estado de la cuenta</label>
                 <div className="flex items-center space-x-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    user?.is_active ? 'bg-green-500' : 'bg-red-500'
-                  }`}></span>
+                  <span className={`w-2 h-2 rounded-full ${user?.is_active ? 'bg-green-500' : 'bg-red-500'
+                    }`}></span>
                   <span className="text-[#2f4823] font-semibold">
                     {user?.is_active ? 'Activa' : 'Inactiva'}
                   </span>
@@ -101,31 +107,28 @@ const UserProfile = ({ user, onUpdate }) => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[#2f4823]">Notificaciones por email</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user?.preferences?.email_notifications !== false 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${user?.preferences?.email_notifications !== false
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                    }`}>
                     {user?.preferences?.email_notifications !== false ? 'Activado' : 'Desactivado'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#2f4823]">Emails de marketing</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user?.marketing_emails 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${user?.marketing_emails
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                    }`}>
                     {user?.marketing_emails ? 'Activado' : 'Desactivado'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#2f4823]">Newsletter espiritual</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user?.preferences?.newsletter !== false 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${user?.preferences?.newsletter !== false
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                    }`}>
                     {user?.preferences?.newsletter !== false ? 'Activado' : 'Desactivado'}
                   </span>
                 </div>
@@ -177,7 +180,7 @@ const UserProfile = ({ user, onUpdate }) => {
                     <p className="text-sm text-[#779385] mt-1">Recibir notificaciones sobre tus pedidos y cuenta</p>
                   </div>
                 </label>
-                
+
                 <label className="flex items-start space-x-3">
                   <input
                     type="checkbox"
@@ -191,7 +194,7 @@ const UserProfile = ({ user, onUpdate }) => {
                     <p className="text-sm text-[#779385] mt-1">Ofertas especiales, nuevos productos y contenido espiritual</p>
                   </div>
                 </label>
-                
+
                 <label className="flex items-start space-x-3">
                   <input
                     type="checkbox"

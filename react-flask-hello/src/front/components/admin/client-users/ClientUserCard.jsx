@@ -28,17 +28,22 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
               )}
             </div>
             <p className="text-gray-600 text-sm">{user.email}</p>
-            
+
+            {user.birthdate && (
+              <p className="text-xs text-gray-500 mt-1">
+                🎂 {new Date(user.birthdate).toLocaleDateString('es-ES')}
+              </p>
+            )}
+
             {/* ✅ NUEVO: Badges de Segmentación y Stats */}
             <div className="flex items-center space-x-2 mt-1">
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                user.is_active 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
+              <span className={`text-xs px-2 py-1 rounded-full ${user.is_active
+                ? 'bg-green-100 text-green-800'
+                : 'bg-red-100 text-red-800'
+                }`}>
                 {user.is_active ? 'Activo' : 'Inactivo'}
               </span>
-              
+
               {/* ✅ BADGES DE SEGMENTACIÓN */}
               {user.is_vip && (
                 <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800 font-medium">
@@ -60,13 +65,13 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
                   Nuevo
                 </span>
               )}
-              
+
               {/* ✅ STATS RÁPIDAS */}
               <span className="text-xs text-gray-500">
                 Pedidos: {user.total_orders || 0} | Logins: {user.login_count || 0}
               </span>
             </div>
-            
+
             <span className="text-xs text-gray-500">
               Registrado: {new Date(user.created_at).toLocaleDateString('es-ES')}
             </span>
@@ -79,11 +84,10 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
           <button
             onClick={() => onStatusToggle(user.id, user.is_active)}
             disabled={isUpdating}
-            className={`px-4 py-2 rounded-2xl font-semibold text-sm transition-all duration-300 ${
-              user.is_active
-                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
-            } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`px-4 py-2 rounded-2xl font-semibold text-sm transition-all duration-300 ${user.is_active
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : 'bg-green-100 text-green-700 hover:bg-green-200'
+              } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {isUpdating ? '...' : user.is_active ? 'Desactivar' : 'Activar'}
           </button>
@@ -144,12 +148,17 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
                   <span className="text-gray-900 capitalize">{user.role}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-gray-600">Cumpleaños:</span>
+                  <span className="text-gray-900">
+                    {user.birthdate ? new Date(user.birthdate).toLocaleDateString('es-ES') : 'No especificado'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-gray-600">Google ID:</span>
                   <span className="text-gray-900 font-mono text-xs">
                     {user.google_id ? user.google_id.substring(0, 10) + '...' : 'No'}
                   </span>
                 </div>
-                {/* ✅ NUEVO: Información de Segmentación */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Segmento:</span>
                   <span className="text-gray-900 capitalize font-medium">{user.user_segment}</span>
