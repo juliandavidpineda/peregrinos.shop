@@ -32,6 +32,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 // MI-PERFIL rutas custumer
 import OrderDetailPage from './pages/OrderDetailPage';
 import UserProtectedRoute from "./components/UserProtectedRoute";
+import ReviewProductsPage from "./pages/ReviewProductsPage"
 
 // Importar páginas de pago
 import PaymentSuccess from './components/checkout/PaymentSuccess';
@@ -66,6 +67,7 @@ export const router = createBrowserRouter(
         <Route path="about" element={<AboutPage />} />
         <Route path="/saint/:saintId" element={<SaintDetailPage />} />
 
+        {/* RUTAS PROTEGIDAS DE USUARIO */}
         <Route path="/mi-perfil" element={
           <UserProtectedRoute>
             <UserProfilePage />
@@ -74,6 +76,11 @@ export const router = createBrowserRouter(
         <Route path="/order/:orderId" element={
           <UserProtectedRoute>
             <OrderDetailPage />
+          </UserProtectedRoute>
+        } />
+        <Route path="/review/:orderId" element={
+          <UserProtectedRoute>
+            <ReviewProductsPage />
           </UserProtectedRoute>
         } />
 

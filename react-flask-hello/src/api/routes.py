@@ -2183,6 +2183,89 @@ def update_product_rating(product_id):
         db.session.rollback()
         print(f"Error actualizando rating: {e}")
 
+# Endpoint para crear múltiples reseñas desde una orden
+@api.route('/orders/<order_id>/reviews', methods=['POST'])
+@token_required
+def create_order_reviews(current_user_id, current_user_role, order_id):
+    """Crear múltiples reseñas para los productos de una orden (usuario autenticado)"""
+    try:
+        print(f"🔧 CREATE_ORDER_REVIEWS DEBUG:")
+        print(f"   - Order ID: {order_id}")
+        print(f"   - Current User ID: {current_user_id}")
+        
+        # Verificar que la orden existe
+        order = Order.query.get(order_id)
+        if not order:
+            print("❌ Order not found")
+            return jsonify({'success': False, 'error': 'Orden no encontrada'}), 404
+        
+        print(f"   - Order User ID: {order.user_id}")
+        print(f"   - Order Status: {order.status}")
+        
+        # ✅ CORRECCIÓN: Algunas órdenes pueden no tener user_id (guest checkout)
+        # Permitir si la orden pertenece al usuario O si el email coincide
+        user = User.query.get(current_user_id)
+        if user and order.user_id != current_user_id:
+            # Verificar por email como fallback
+            if order.customer_email != user.email:
+                print(f"❌ Unauthorized: Order email {order.customer_email} != User email {user.email}")
+                return jsonify({'success': False, 'error': 'No autorizado para esta orden'}), 403
+        
+        # Verificar que la orden está entregada
+        if order.status.value != 'delivered':
+            print(f"❌ Order not delivered: {order.status}")
+            return jsonify({'success': False, 'error': 'Solo puedes calificar órdenes entregadas'}), 400
+        
+        data = request.get_json()
+        reviews_data = data.get('reviews', [])
+        
+        if not reviews_data:
+            return jsonify({'success': False, 'error': 'No hay reseñas para enviar'}), 400
+        
+        # Verificar que los productos pertenecen a la orden
+        order_product_ids = [item.product_id for item in order.items]
+        
+        created_reviews = []
+        for review_data in reviews_data:
+            product_id = review_data.get('product_id')
+            
+            # Validar que el producto está en la orden
+            if product_id not in order_product_ids:
+                continue  # Saltar productos que no están en la orden
+            
+            # Crear la reseña con información del usuario autenticado
+            review = Review(
+                product_id=product_id,
+                user_id=current_user_id,  # ✅ Usuario autenticado
+                customer_name=user.name if user else order.customer_name,  # ✅ Nombre del usuario o cliente
+                customer_email=user.email if user else order.customer_email,  # ✅ Email del usuario o cliente
+                rating=review_data.get('rating', 0),
+                title=review_data.get('title', ''),
+                comment=review_data.get('comment', ''),
+                is_approved=False  # ✅ Debe ser aprovada en el panel admin
+            )
+            
+            db.session.add(review)
+            created_reviews.append(review)
+        
+        db.session.commit()
+        
+        # Actualizar ratings de todos los productos calificados
+        for review in created_reviews:
+            update_product_rating(review.product_id)
+        
+        print(f"✅ Reviews created: {len(created_reviews)}")
+        return jsonify({
+            'success': True,
+            'message': f'{len(created_reviews)} reseñas creadas correctamente',
+            'reviews_created': len(created_reviews)
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error creando reseñas de orden: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # =============================================================================
 # ANALYTICS
 # =============================================================================

@@ -94,7 +94,7 @@ export const reviewService = {
     }
   },
 
-  // Obtener métricas de reviews - ✅ USAR authenticatedRequest
+  // Obtener métricas de reviews - USAR authenticatedRequest
   async getReviewAnalytics() {
     try {
       const reviews = await this.getAdminReviews({ status: 'all', per_page: 1000 });
@@ -118,5 +118,25 @@ export const reviewService = {
       console.error('Error fetching review analytics:', error);
       throw error;
     }
-  }
+  },
+
+  // Enviar múltiples reseñas para una orden (usuario autenticado)
+  async submitOrderReviews(orderId, reviews) {
+    try {
+      console.log('📤 Enviando reseñas masivas para orden:', orderId, reviews);
+
+      // ✅ USAR apiService.authenticatedRequest porque requiere autenticación
+      const response = await apiService.authenticatedRequest(`/api/orders/${orderId}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify({ reviews }),
+      });
+
+      console.log('✅ Reseñas masivas enviadas:', response);
+      return response;
+    } catch (error) {
+      console.error('❌ Error enviando reseñas masivas:', error);
+      throw error;
+    }
+  },
+
 };
