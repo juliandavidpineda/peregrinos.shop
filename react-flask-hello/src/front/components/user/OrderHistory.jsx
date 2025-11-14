@@ -163,7 +163,7 @@ const OrderHistory = ({ orders, onRefresh }) => {
                     onClick={() => navigate(`/order/${order.id}`)}
                     className="px-4 py-2 text-sm border border-[#2f4823] text-[#2f4823] rounded-2xl font-semibold hover:bg-[#2f4823] hover:text-white transition-all duration-300"
                   >
-                    Ver Detalle
+                    Ver Factura
                   </button>
                   
                   {order.status === 'delivered' && (

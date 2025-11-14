@@ -25,10 +25,12 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminOrders from "./pages/admin/AdminOrders/AdminOrders";
-// IMPORTAR NUEVA RUTA
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReviews from "./pages/admin/AdminReviews";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// MI-PERFIL rutas custumer
+import OrderDetailPage from './pages/OrderDetailPage';
 import UserProtectedRoute from "./components/UserProtectedRoute";
 
 // Importar páginas de pago
@@ -63,10 +65,15 @@ export const router = createBrowserRouter(
         <Route path="/contact" element={<ContactPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="/saint/:saintId" element={<SaintDetailPage />} />
-        
+
         <Route path="/mi-perfil" element={
           <UserProtectedRoute>
             <UserProfilePage />
+          </UserProtectedRoute>
+        } />
+        <Route path="/order/:orderId" element={
+          <UserProtectedRoute>
+            <OrderDetailPage />
           </UserProtectedRoute>
         } />
 

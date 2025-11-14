@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useUserAuth } from '../context/UserAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../services/userService';
-import UserProfile from '../components/user/UserProfile';
-import UserInfo from '../components/user/UserInfo';
+import UserProfileUnified from '../components/user/UserProfileUnified';
 import OrderHistory from '../components/user/OrderHistory';
 import AddressBook from '../components/user/AddressBook';
 
 const UserProfilePage = () => {
   const { user, isAuthenticated, logout } = useUserAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('info');
+  const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -122,11 +121,11 @@ const UserProfilePage = () => {
     return null; // Redirección manejada en useEffect
   }
 
+  // ✅ NUEVAS PESTAÑAS UNIFICADAS
   const tabs = [
-    { id: 'info', name: 'Información Personal', icon: '👤' },
+    { id: 'profile', name: 'Mi Perfil', icon: '👤' },
     { id: 'orders', name: 'Mis Pedidos', icon: '📦' },
-    { id: 'addresses', name: 'Direcciones', icon: '🏠' },
-    { id: 'profile', name: 'Mi Perfil', icon: '⚙️' }
+    { id: 'addresses', name: 'Direcciones', icon: '🏠' }
   ];
 
   return (
@@ -223,14 +222,7 @@ const UserProfilePage = () => {
           {/* Tab Content */}
           <div className="p-6">
             {activeTab === 'profile' && (
-              <UserProfile 
-                user={profileData || user} 
-                onUpdate={handleUpdateProfile}
-              />
-            )}
-            
-            {activeTab === 'info' && (
-              <UserInfo 
+              <UserProfileUnified 
                 user={profileData || user} 
                 onUpdate={handleUpdateProfile}
               />
