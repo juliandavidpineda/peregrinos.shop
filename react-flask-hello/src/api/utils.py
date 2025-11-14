@@ -45,7 +45,7 @@ def generate_sitemap(app):
         <ul style="text-align: left;">"""+links_html+"</ul></div>"
 
 # =============================================================================
-# AUTHENTICATION UTILITIES - ✅ CORREGIDO Y MEJORADO
+# AUTHENTICATION UTILITIES 
 # =============================================================================
 
 def get_jwt_secret():
@@ -54,6 +54,13 @@ def get_jwt_secret():
     ✅ Prioriza JWT_SECRET_KEY, fallback a FLASK_APP_KEY para compatibilidad
     """
     secret = os.getenv('JWT_SECRET_KEY') or os.getenv('FLASK_APP_KEY')
+
+     # ✅ DEBUG TEMPORAL
+    print(f"🔑 DEBUG JWT SECRET:")
+    print(f"   - JWT_SECRET_KEY: {os.getenv('JWT_SECRET_KEY')}")
+    print(f"   - FLASK_APP_KEY: {os.getenv('FLASK_APP_KEY')}")
+    print(f"   - Secret usado: {secret[:10]}...")  # Solo primeros 10 chars por seguridad
+
     if not secret:
         print("⚠️ WARNING: No JWT secret key found in environment variables")
         return 'peregrinos-super-secret-key-2025-dev'  # Fallback solo para desarrollo

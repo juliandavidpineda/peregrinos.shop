@@ -4,13 +4,13 @@ from google.auth.transport import requests
 import jwt
 from datetime import datetime, timedelta
 from api.models import db, User
-from api.utils import generate_token  # ✅ IMPORTAR la función centralizada
+from api.utils import generate_token, get_jwt_secret 
 
 class GoogleAuthService:
     def __init__(self):
         self.client_id = os.getenv('GOOGLE_CLIENT_ID', '')
         # ⚠️ MANTENER por compatibilidad pero NO USAR para tokens
-        self.secret_key = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-this')
+        #self.secret_key = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-this')
     
     def verify_google_token(self, token):
         """Verificar el token de Google"""
