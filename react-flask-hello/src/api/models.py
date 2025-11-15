@@ -101,6 +101,7 @@ class User(db.Model):
             "email": self.email,
             "name": self.name,
             "picture": self.picture,
+            "google_id": self.google_id,
             "email_verified": self.email_verified or False,
             "role": self.role or 'customer',
             "is_active": self.is_active,

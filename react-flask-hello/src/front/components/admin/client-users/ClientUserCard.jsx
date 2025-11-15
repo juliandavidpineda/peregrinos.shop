@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
+
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (dateString) => {
@@ -156,7 +157,9 @@ const ClientUserCard = ({ user, onStatusToggle, isUpdating }) => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Google ID:</span>
                   <span className="text-gray-900 font-mono text-xs">
-                    {user.google_id ? user.google_id.substring(0, 10) + '...' : 'No'}
+                    {user && user.google_id && user.google_id.trim() !== ''
+                      ? user.google_id.substring(0, 10) + '...'
+                      : 'No'}
                   </span>
                 </div>
                 <div className="flex justify-between">

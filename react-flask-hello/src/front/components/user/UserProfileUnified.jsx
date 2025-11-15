@@ -6,11 +6,7 @@ const UserProfileUnified = ({ user, onUpdate }) => {
     name: user?.name || '',
     phone: user?.phone || '',
     birthdate: user?.birthdate || '',
-    marketing_emails: user?.marketing_emails || false,
-    preferences: user?.preferences || {
-      email_notifications: true,
-      newsletter: true
-    }
+    marketing_emails: user?.marketing_emails || false
   });
   const [loading, setLoading] = useState(false);
 
@@ -35,21 +31,10 @@ const UserProfileUnified = ({ user, onUpdate }) => {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    if (name.startsWith('preferences.')) {
-      const prefKey = name.split('.')[1];
-      setFormData(prev => ({
-        ...prev,
-        preferences: {
-          ...prev.preferences,
-          [prefKey]: type === 'checkbox' ? checked : value
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: type === 'checkbox' ? checked : value
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const formatDate = (dateString) => {
@@ -83,7 +68,7 @@ const UserProfileUnified = ({ user, onUpdate }) => {
                   <label className="block text-sm font-medium text-[#779385] mb-1">Nombre completo</label>
                   <p className="text-[#2f4823] font-semibold text-lg">{user?.name || 'No especificado'}</p>
                 </div>
-                
+
                 <div className="bg-white rounded-2xl p-4 border border-[#779385]/20">
                   <label className="block text-sm font-medium text-[#779385] mb-1">Email</label>
                   <p className="text-[#2f4823] font-semibold text-lg">{user?.email}</p>
@@ -93,12 +78,12 @@ const UserProfileUnified = ({ user, onUpdate }) => {
                     </span>
                   )}
                 </div>
-                
+
                 <div className="bg-white rounded-2xl p-4 border border-[#779385]/20">
                   <label className="block text-sm font-medium text-[#779385] mb-1">Teléfono</label>
                   <p className="text-[#2f4823] font-semibold text-lg">{user?.phone || 'No especificado'}</p>
                 </div>
-                
+
                 <div className="bg-white rounded-2xl p-4 border border-[#779385]/20">
                   <label className="block text-sm font-medium text-[#779385] mb-1">Fecha de cumpleaños</label>
                   <p className="text-[#2f4823] font-semibold text-lg">{formatDate(user?.birthdate)}</p>
@@ -106,40 +91,26 @@ const UserProfileUnified = ({ user, onUpdate }) => {
               </div>
             </div>
 
-            {/* Preferencias de Comunicación */}
+            {/* Comunicaciones y Marketing Unificado */}
             <div className="border-t border-[#779385]/20 pt-6">
-              <h4 className="text-lg font-semibold text-[#2f4823] mb-4">Preferencias de comunicación</h4>
+              <h4 className="text-lg font-semibold text-[#2f4823] mb-4">Comunicaciones y Marketing</h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[#2f4823]">Notificaciones por email</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user?.preferences?.email_notifications !== false 
-                      ? 'bg-green-100 text-green-800' 
+                  <span className="text-[#2f4823]">Comunicaciones y Marketing</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${user?.marketing_emails
+                      ? 'bg-green-100 text-green-800'
                       : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user?.preferences?.email_notifications !== false ? 'Activado' : 'Desactivado'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#2f4823]">Emails de marketing</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user?.marketing_emails 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
+                    }`}>
                     {user?.marketing_emails ? 'Activado' : 'Desactivado'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#2f4823]">Newsletter espiritual</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    user?.preferences?.newsletter !== false 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user?.preferences?.newsletter !== false ? 'Activado' : 'Desactivado'}
-                  </span>
-                </div>
+                {user?.marketing_emails && (
+                  <div className="bg-[#e8dfca] rounded-2xl p-3 border border-[#779385]/20">
+                    <p className="text-xs text-[#779385] text-center">
+                      Recibes: notificaciones de pedidos, ofertas, nuevos productos y contenido espiritual
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -153,13 +124,12 @@ const UserProfileUnified = ({ user, onUpdate }) => {
                     {user?.created_at ? new Date(user.created_at).toLocaleDateString('es-ES') : 'Fecha no disponible'}
                   </p>
                 </div>
-                
+
                 <div className="bg-white rounded-2xl p-4 border border-[#779385]/20">
                   <label className="block text-sm font-medium text-[#779385] mb-1">Estado de la cuenta</label>
                   <div className="flex items-center space-x-2">
-                    <span className={`w-2 h-2 rounded-full ${
-                      user?.is_active ? 'bg-green-500' : 'bg-red-500'
-                    }`}></span>
+                    <span className={`w-2 h-2 rounded-full ${user?.is_active ? 'bg-green-500' : 'bg-red-500'
+                      }`}></span>
                     <span className="text-[#2f4823] font-semibold">
                       {user?.is_active ? 'Activa' : 'Inactiva'}
                     </span>
@@ -169,7 +139,7 @@ const UserProfileUnified = ({ user, onUpdate }) => {
                 <div className="bg-white rounded-2xl p-4 border border-[#779385]/20">
                   <label className="block text-sm font-medium text-[#779385] mb-1">Método de registro</label>
                   <div className="flex items-center space-x-2">
-                    {user?.google_id ? (
+                    {user && user.google_id && user.google_id.trim() !== '' ? (
                       <>
                         <span className="text-blue-500">🔗</span>
                         <span className="text-[#2f4823] font-semibold">Google Account</span>
@@ -248,24 +218,10 @@ const UserProfileUnified = ({ user, onUpdate }) => {
               </div>
             </div>
 
-            {/* Preferencias de Comunicación Editables */}
+            {/* Comunicaciones y Marketing Unificado */}
             <div className="border-t border-[#779385]/20 pt-6">
-              <h4 className="text-lg font-semibold text-[#2f4823] mb-4">Preferencias de comunicación</h4>
+              <h4 className="text-lg font-semibold text-[#2f4823] mb-4">Comunicaciones y Marketing</h4>
               <div className="space-y-4">
-                <label className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="preferences.email_notifications"
-                    checked={formData.preferences.email_notifications}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-[#2f4823] border-gray-300 rounded focus:ring-[#2f4823]"
-                  />
-                  <div>
-                    <span className="font-medium text-[#2f4823]">Notificaciones por email</span>
-                    <p className="text-sm text-[#779385] mt-1">Recibir notificaciones sobre tus pedidos y cuenta</p>
-                  </div>
-                </label>
-                
                 <label className="flex items-start space-x-3">
                   <input
                     type="checkbox"
@@ -275,22 +231,11 @@ const UserProfileUnified = ({ user, onUpdate }) => {
                     className="mt-1 w-4 h-4 text-[#2f4823] border-gray-300 rounded focus:ring-[#2f4823]"
                   />
                   <div>
-                    <span className="font-medium text-[#2f4823]">Emails de marketing</span>
-                    <p className="text-sm text-[#779385] mt-1">Ofertas especiales, nuevos productos y contenido espiritual</p>
-                  </div>
-                </label>
-                
-                <label className="flex items-start space-x-3">
-                  <input
-                    type="checkbox"
-                    name="preferences.newsletter"
-                    checked={formData.preferences.newsletter}
-                    onChange={handleInputChange}
-                    className="mt-1 w-4 h-4 text-[#2f4823] border-gray-300 rounded focus:ring-[#2f4823]"
-                  />
-                  <div>
-                    <span className="font-medium text-[#2f4823]">Newsletter espiritual</span>
-                    <p className="text-sm text-[#779385] mt-1">Reflexiones, santoral y contenido de fe semanal</p>
+                    <span className="font-medium text-[#2f4823]">Comunicaciones y Marketing</span>
+                    <p className="text-sm text-[#779385] mt-1">
+                      Recibir emails con: notificaciones de pedidos, ofertas especiales, nuevos productos,
+                      newsletter espiritual y contenido de fe. Puedes desactivarlo cuando quieras.
+                    </p>
                   </div>
                 </label>
               </div>

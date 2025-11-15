@@ -108,8 +108,8 @@ const PrivacidadPage = () => {
                 Para ejercer sus derechos o realizar consultas sobre privacidad:
               </p>
               <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="font-semibold">Email: privacidad@peregrinos.shop</p>
-                <p className="text-sm text-gray-600">Nos comprometemos a responder en 72 horas hábiles.</p>
+                <p className="font-semibold">Email: hola@peregrinos.shop</p>
+                <p className="text-sm text-gray-600">Nos comprometemos a responder en 24 horas hábiles.</p>
               </div>
             </section>
 
