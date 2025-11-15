@@ -68,6 +68,14 @@ export const clientUserService = {
   },
 
   /**
+ * Obtener direcciones de un usuario cliente
+ */
+  async getClientUserAddresses(userId) {
+    const response = await apiService.authenticatedRequest(`/api/admin/client-users/${userId}/addresses`);
+    return response;
+  },
+
+  /**
  * Exportar usuarios clientes por segmento específico
  */
   async exportClientUsersBySegment(segment) {

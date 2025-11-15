@@ -7,7 +7,7 @@ const AddressBook = ({ addresses, onAdd, onUpdate, onDelete }) => {
 
   const [formData, setFormData] = useState({
     alias: '',
-    street: '',
+    address: '',
     city: '',
     department: '',
     postal_code: '',
@@ -19,7 +19,7 @@ const AddressBook = ({ addresses, onAdd, onUpdate, onDelete }) => {
   const resetForm = () => {
     setFormData({
       alias: '',
-      street: '',
+      address: '',
       city: '',
       department: '',
       postal_code: '',
@@ -68,12 +68,12 @@ const AddressBook = ({ addresses, onAdd, onUpdate, onDelete }) => {
     setEditingAddress(address);
     setFormData({
       alias: address.alias || '',
-      street: address.street || '',
+      address: address.address || '',
       city: address.city || '',
       department: address.department || '',
       postal_code: address.postal_code || '',
       phone: address.phone || '',
-      instructions: address.instructions || '',
+      instructions: address.special_instructions || address.instructions || '',
       is_primary: address.is_primary || false
     });
     setShowAddForm(true);
@@ -177,8 +177,8 @@ const AddressBook = ({ addresses, onAdd, onUpdate, onDelete }) => {
               </label>
               <input
                 type="text"
-                name="street"
-                value={formData.street}
+                name="address"
+                value={formData.address}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-[#779385]/30 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-transparent transition-all duration-300"
                 placeholder="Calle, Número, Barrio"
@@ -315,7 +315,7 @@ const AddressBook = ({ addresses, onAdd, onUpdate, onDelete }) => {
                     </div>
                     
                     <div className="space-y-2 text-[#2f4823]">
-                      <p className="font-medium">{address.street}</p>
+                      <p className="font-medium">{address.address}</p>
                       <p>
                         {address.city}, {address.department}
                         {address.postal_code && ` • ${address.postal_code}`}

@@ -6,7 +6,7 @@ from api.models import db, User, AdminUser, Product, Category, Order, OrderItem,
 from api.utils import generate_sitemap, APIException, generate_token, token_required, admin_required
 from flask_cors import CORS
 from datetime import datetime, timedelta
-from api.models import OrderStatusEnum
+from api.models import OrderStatusEnum, UserAddress
 from sqlalchemy import func, desc, or_
 
 import os
@@ -220,12 +220,13 @@ def get_user_orders(current_user_id, current_user_role):
 def get_user_addresses(current_user_id, current_user_role):
     """Obtener direcciones del usuario autenticado"""
     try:
-        # TODO: Implementar modelo de Address cuando esté disponible
-        addresses = []
+        addresses = UserAddress.query.filter_by(user_id=current_user_id)\
+                                   .order_by(UserAddress.is_primary.desc(), UserAddress.created_at.desc())\
+                                   .all()
         
         return jsonify({
             'success': True,
-            'addresses': addresses
+            'addresses': [address.serialize() for address in addresses]
         })
         
     except Exception as e:
@@ -239,34 +240,48 @@ def add_user_address(current_user_id, current_user_role):
     try:
         data = request.get_json()
         
-        required_fields = ['alias', 'street', 'city', 'department', 'phone']
+        # Validar campos requeridos (compatible con frontend existente)
+        required_fields = ['alias', 'phone', 'city', 'department']
+        
+        # Manejar tanto 'address' como 'street' para compatibilidad
+        if not data.get('address') and not data.get('street'):
+            return jsonify({'success': False, 'error': 'El campo dirección es requerido'}), 400
+        
         for field in required_fields:
             if not data.get(field):
                 return jsonify({'success': False, 'error': f'El campo {field} es requerido'}), 400
         
-        # Mock temporal - reemplazar cuando tengas modelo Address
-        import time
-        mock_address = {
-            'id': f"addr_{int(time.time())}",
-            'user_id': current_user_id,
-            'alias': data['alias'],
-            'street': data['street'],
-            'city': data['city'],
-            'department': data['department'],
-            'postal_code': data.get('postal_code', ''),
-            'phone': data['phone'],
-            'instructions': data.get('instructions', ''),
-            'is_primary': data.get('is_primary', False),
-            'created_at': datetime.utcnow().isoformat()
-        }
+        # Si se marca como principal, quitar principal de otras direcciones
+        if data.get('is_primary'):
+            UserAddress.query.filter_by(user_id=current_user_id, is_primary=True).update({'is_primary': False})
+        
+        # Usar 'address' si existe, sino usar 'street' (para compatibilidad)
+        address_field = data.get('address') or data.get('street', '')
+        
+        # Crear nueva dirección
+        new_address = UserAddress(
+            user_id=current_user_id,
+            alias=data['alias'],
+            phone=data['phone'],
+            address=address_field,  # Usamos el campo corregido
+            city=data['city'],
+            department=data['department'],
+            postal_code=data.get('postal_code'),
+            special_instructions=data.get('special_instructions') or data.get('instructions', ''),
+            is_primary=data.get('is_primary', False)
+        )
+        
+        db.session.add(new_address)
+        db.session.commit()
         
         return jsonify({
             'success': True,
-            'address': mock_address,
+            'address': new_address.serialize(),
             'message': 'Dirección agregada correctamente'
         }), 201
         
     except Exception as e:
+        db.session.rollback()
         print(f"❌ Error en add_user_address: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -277,28 +292,49 @@ def update_user_address(current_user_id, current_user_role, address_id):
     try:
         data = request.get_json()
         
-        # Mock temporal
-        mock_address = {
-            'id': address_id,
-            'user_id': current_user_id,
-            'alias': data.get('alias', ''),
-            'street': data.get('street', ''),
-            'city': data.get('city', ''),
-            'department': data.get('department', ''),
-            'postal_code': data.get('postal_code', ''),
-            'phone': data.get('phone', ''),
-            'instructions': data.get('instructions', ''),
-            'is_primary': data.get('is_primary', False),
-            'updated_at': datetime.utcnow().isoformat()
-        }
+        # Buscar dirección del usuario
+        address = UserAddress.query.filter_by(id=address_id, user_id=current_user_id).first()
+        if not address:
+            return jsonify({'success': False, 'error': 'Dirección no encontrada'}), 404
+        
+        # Si se marca como principal, quitar principal de otras direcciones
+        if data.get('is_primary'):
+            UserAddress.query.filter_by(user_id=current_user_id, is_primary=True).update({'is_primary': False})
+        
+        # Actualizar campos (manejar tanto 'address' como 'street')
+        if 'address' in data:
+            address.address = data['address']
+        elif 'street' in data:
+            address.address = data['street']
+            
+        if 'alias' in data:
+            address.alias = data['alias']
+        if 'phone' in data:
+            address.phone = data['phone']
+        if 'city' in data:
+            address.city = data['city']
+        if 'department' in data:
+            address.department = data['department']
+        if 'postal_code' in data:
+            address.postal_code = data['postal_code']
+        if 'special_instructions' in data:
+            address.special_instructions = data['special_instructions']
+        elif 'instructions' in data:
+            address.special_instructions = data['instructions']
+        if 'is_primary' in data:
+            address.is_primary = data['is_primary']
+        
+        address.updated_at = datetime.utcnow()
+        db.session.commit()
         
         return jsonify({
             'success': True,
-            'address': mock_address,
+            'address': address.serialize(),
             'message': 'Dirección actualizada correctamente'
         })
         
     except Exception as e:
+        db.session.rollback()
         print(f"❌ Error en update_user_address: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -307,14 +343,49 @@ def update_user_address(current_user_id, current_user_role, address_id):
 def delete_user_address(current_user_id, current_user_role, address_id):
     """Eliminar dirección del usuario"""
     try:
-        # Mock temporal
+        address = UserAddress.query.filter_by(id=address_id, user_id=current_user_id).first()
+        if not address:
+            return jsonify({'success': False, 'error': 'Dirección no encontrada'}), 404
+        
+        db.session.delete(address)
+        db.session.commit()
+        
         return jsonify({
             'success': True,
             'message': 'Dirección eliminada correctamente'
         })
         
     except Exception as e:
+        db.session.rollback()
         print(f"❌ Error en delete_user_address: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api.route('/user/addresses/<address_id>/set-primary', methods=['PUT', 'OPTIONS'])
+@token_required
+def set_primary_address(current_user_id, current_user_role, address_id):
+    """Establecer dirección como principal"""
+    try:
+        address = UserAddress.query.filter_by(id=address_id, user_id=current_user_id).first()
+        if not address:
+            return jsonify({'success': False, 'error': 'Dirección no encontrada'}), 404
+        
+        # Quitar principal de todas las direcciones
+        UserAddress.query.filter_by(user_id=current_user_id, is_primary=True).update({'is_primary': False})
+        
+        # Establecer esta como principal
+        address.is_primary = True
+        address.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'address': address.serialize(),
+            'message': 'Dirección principal establecida correctamente'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error en set_primary_address: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # =============================================================================
@@ -980,6 +1051,30 @@ def get_activity_logs(current_user_id, current_user_role):
         
     except Exception as e:
         return jsonify({'message': str(e)}), 400
+    
+#endpoint para obtener direcciones de usuario (admin)
+@api.route('/admin/client-users/<int:user_id>/addresses', methods=['GET'])
+@superadmin_required
+def get_client_user_addresses(user_id):
+    """Obtener direcciones de un usuario cliente (solo superadmin)"""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        addresses = UserAddress.query.filter_by(user_id=user_id)\
+                                   .order_by(UserAddress.is_primary.desc(), UserAddress.created_at.desc())\
+                                   .all()
+        
+        return jsonify({
+            'success': True,
+            'addresses': [address.serialize() for address in addresses],
+            'total': len(addresses)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error getting user addresses: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 # =============================================================================
 # PRODUCT ENDPOINTS - CRUD COMPLETO

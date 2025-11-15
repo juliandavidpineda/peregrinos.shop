@@ -5,16 +5,16 @@ export const userService = {
   async getAdminUsers(filters = {}) {
     try {
       const queryParams = new URLSearchParams();
-      
+
       // Agregar filtros a los parámetros
       if (filters.role) queryParams.append('role', filters.role);
       if (filters.is_active !== undefined) queryParams.append('is_active', filters.is_active);
       if (filters.search) queryParams.append('search', filters.search);
       if (filters.page) queryParams.append('page', filters.page);
       if (filters.per_page) queryParams.append('per_page', filters.per_page);
-      
+
       const url = `/api/admin/users${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-      
+
       // ✅ USAR authenticatedRequest SOLO para userService
       const response = await apiService.authenticatedRequest(url, {
         method: 'GET',
@@ -104,7 +104,7 @@ export const userService = {
     try {
       const queryParams = new URLSearchParams({ page, per_page });
       const url = `/api/admin/activity-logs?${queryParams.toString()}`;
-      
+
       const response = await apiService.authenticatedRequest(url, {
         method: 'GET',
       });
@@ -163,7 +163,7 @@ export const userService = {
     }
   },
 
-   // ✅ NUEVAS FUNCIONES PARA PERFIL DE USUARIO
+  // ✅ NUEVAS FUNCIONES PARA PERFIL DE USUARIO
   async getUserProfile() {
     try {
       const response = await apiService.authenticatedRequest('/api/user/profile');
@@ -241,6 +241,19 @@ export const userService = {
       return response;
     } catch (error) {
       console.error('Error deleting user address:', error);
+      throw error;
+    }
+  },
+
+  // En userService.js - Agregar este método
+  async setPrimaryAddress(addressId) {
+    try {
+      const response = await apiService.authenticatedRequest(`/api/user/addresses/${addressId}/set-primary`, {
+        method: 'PUT',
+      });
+      return response;
+    } catch (error) {
+      console.error('Error setting primary address:', error);
       throw error;
     }
   }

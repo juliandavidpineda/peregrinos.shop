@@ -91,6 +91,7 @@ class User(db.Model):
     
     # Relaciones
     orders: Mapped[list["Order"]] = relationship("Order", back_populates="user")
+    addresses: Mapped[list["UserAddress"]] = relationship("UserAddress", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<User {self.email}>'
@@ -163,6 +164,48 @@ class User(db.Model):
     def has_abandoned_cart(self):
         # Esto lo implementaremos después con el modelo Cart
         return False  # Placeholder por ahora
+    
+class UserAddress(db.Model):
+    __tablename__ = 'user_addresses'
+    
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
+    
+    # Datos de la dirección
+    alias: Mapped[str] = mapped_column(String(100), nullable=False)  # Casa, Oficina, etc.
+    phone: Mapped[str] = mapped_column(String(20), nullable=False)
+    address: Mapped[str] = mapped_column(Text, nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    department: Mapped[str] = mapped_column(String(100), nullable=False)
+    postal_code: Mapped[str] = mapped_column(String(20), nullable=True)
+    special_instructions: Mapped[str] = mapped_column(Text, nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Timestamps
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relaciones
+    user: Mapped["User"] = relationship("User", back_populates="addresses")
+
+    def __repr__(self):
+        return f'<UserAddress {self.alias} - {self.user.email}>'
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'alias': self.alias,
+            'phone': self.phone,
+            'address': self.address,
+            'city': self.city,
+            'department': self.department,
+            'postal_code': self.postal_code,
+            'special_instructions': self.special_instructions,
+            'is_primary': self.is_primary,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
     
 
 class AdminUser(db.Model):

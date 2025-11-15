@@ -5,7 +5,7 @@ const UserProfileUnified = ({ user, onUpdate }) => {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
-    birthdate: user?.birthdate || '',
+    birthdate: user?.birthdate ? user.birthdate.split('T')[0] : '',
     marketing_emails: user?.marketing_emails || false
   });
   const [loading, setLoading] = useState(false);
