@@ -501,10 +501,17 @@ def get_client_users():
         
         # Ordenar por fecha de creación (más recientes primero)
         users = query.order_by(User.created_at.desc()).all()
+
+        users_data = []
+        for user in users:
+            user_data = user.serialize()
+            # Agregar conteo de direcciones
+            user_data['addresses_count'] = len(user.addresses) if user.addresses else 0
+            users_data.append(user_data)
         
         return jsonify({
             'success': True,
-            'users': [user.serialize() for user in users],
+            'users': users_data,
             'total': len(users)
         }), 200
         
@@ -1323,6 +1330,89 @@ def get_top_selling_products():
             'message': 'Error al obtener productos más vendidos',
             'error': str(e)
         }), 500
+    
+# Search HomePage    
+@api.route('/products/search', methods=['GET'])
+def search_products():
+    """Búsqueda inteligente de productos Y santos con sugerencias"""
+    try:
+        search_term = request.args.get('q', '').strip()
+        limit = int(request.args.get('limit', 10))
+        
+        if not search_term:
+            return jsonify({
+                'success': True,
+                'products': [],
+                'saints': [],  # ✅ NUEVO
+                'suggestions': [],
+                'total': 0
+            }), 200
+        
+        # ✅ BÚSQUEDA EN PRODUCTOS (existente)
+        product_search_filter = or_(
+            Product.name.ilike(f'%{search_term}%'),
+            Product.description.ilike(f'%{search_term}%'),
+            Product.subcategory.ilike(f'%{search_term}%'),
+            Product.material.ilike(f'%{search_term}%'),
+            Product.origen.ilike(f'%{search_term}%'),
+            Category.name.ilike(f'%{search_term}%')
+        )
+        
+        products = Product.query.join(Category)\
+                               .filter(product_search_filter)\
+                               .filter(Product.in_stock == True)\
+                               .limit(limit)\
+                               .all()
+        
+        # ✅ NUEVO: BÚSQUEDA EN SANTOS
+        saint_search_filter = or_(
+            Saint.name.ilike(f'%{search_term}%'),
+            Saint.summary.ilike(f'%{search_term}%'),
+            Saint.biography.ilike(f'%{search_term}%'),
+            Saint.patronage.ilike(f'%{search_term}%')
+        )
+        
+        saints = Saint.query.filter(saint_search_filter)\
+                           .filter(Saint.is_active == True)\
+                           .limit(5)\
+                           .all()
+        
+        # ✅ SUGERENCIAS MEJORADAS
+        suggestions = []
+        
+        # Sugerir categorías de productos
+        categories = list(set([p.category_rel.name for p in products if p.category_rel]))
+        suggestions.extend([f"Categoría: {cat}" for cat in categories[:2]])
+        
+        # Sugerir materiales
+        materials = list(set([p.material for p in products if p.material]))
+        suggestions.extend([f"Material: {mat}" for mat in materials[:2]])
+        
+        # ✅ NUEVO: Sugerir santos
+        saint_names = [saint.name for saint in saints]
+        suggestions.extend([f"Santo: {name}" for name in saint_names[:2]])
+        
+        # Sugerir ver todos
+        total_results = len(products) + len(saints)
+        if total_results > 5:
+            suggestions.append(f"Ver todos los {total_results} resultados")
+        
+        return jsonify({
+            'success': True,
+            'products': [product.serialize() for product in products],
+            'saints': [saint.serialize_short() for saint in saints],  # ✅ NUEVO
+            'suggestions': suggestions[:6],  # Un poco más de sugerencias
+            'total_products': len(products),
+            'total_saints': len(saints),  # ✅ NUEVO
+            'search_term': search_term
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error en búsqueda: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
 
 # =============================================================================
 # CATEGORY ENDPOINTS

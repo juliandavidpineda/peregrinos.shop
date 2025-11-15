@@ -31,7 +31,7 @@ export const HeroSection = () => {
       </div>
 
       {/* Contenido Principal */}
-      <div className="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+      <div className="relative z-20 text-center px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto mt-16 sm:mt-8 md:mt-0">
 
         {/* Badge Artesanal */}
         <div className="inline-flex items-center bg-[#f7f2e7] text-[#2f4823] px-6 py-3 rounded-full mb-8 shadow-lg">
