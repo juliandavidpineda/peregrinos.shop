@@ -1,16 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useUserAuth } from '../context/UserAuthContext'; // ✅ NUEVO
 import { orderService } from '../services/orderService';
-import { paymentService } from '../services/paymentService'; // ✅ CAMBIADO
+import { paymentService } from '../services/paymentService';
+import { userService } from '../services/userService'; // ✅ NUEVO
 import CheckoutSummary from '../components/checkout/CheckoutSummary';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { cartItems, clearCart } = useCart();
+  const { user: authUser, isAuthenticated } = useUserAuth(); // ✅ NUEVO
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState('shipping');
   const [orderId, setOrderId] = useState('');
+
+  // ✅ NUEVO: Estados para direcciones
+  const [userAddresses, setUserAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [useSavedAddress, setUseSavedAddress] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -21,6 +30,75 @@ const CheckoutPage = () => {
     departamento: '',
     codigoPostal: ''
   });
+
+  useEffect(() => {
+  console.log('🔍 useEffect PRINCIPAL ejecutado');
+  console.log('🔍 isAuthenticated:', isAuthenticated);
+  console.log('🔍 authUser:', authUser);
+  
+  if (isAuthenticated && authUser) {
+    console.log('🔍 ✅ CONDICIÓN CUMPLIDA - Llamando loadUserAddresses');
+    loadUserAddresses();
+    
+    // Pre-llenar email y nombre
+    setFormData(prev => ({
+      ...prev,
+      email: authUser.email || '',
+      nombre: authUser.name || ''
+    }));
+  }
+}, [isAuthenticated, authUser]); // ✅ Solo depende de estos
+
+  const loadUserAddresses = async () => {
+    setLoadingAddresses(true);
+    try {
+      const response = await userService.getUserAddresses();
+      if (response.success) {
+        const addresses = response.addresses || [];
+        setUserAddresses(addresses);
+
+        const primaryAddress = addresses.find(addr => addr.is_primary);
+        if (primaryAddress) {
+          setSelectedAddressId(primaryAddress.id);
+          setUseSavedAddress(true);
+
+          // ✅ MOVER EL AUTO-COMPLETADO AQUÍ (después de establecer estados)
+          setFormData(prev => ({
+            ...prev,
+            direccion: primaryAddress.address,
+            ciudad: primaryAddress.city,
+            departamento: primaryAddress.department,
+            codigoPostal: primaryAddress.postal_code || '',
+            telefono: primaryAddress.phone
+          }));
+
+          console.log('📍 Formulario auto-completado con dirección principal');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading addresses:', error);
+    } finally {
+      setLoadingAddresses(false);
+    }
+  };
+
+  // ✅ NUEVO: Cuando se selecciona una dirección guardada
+  const handleAddressSelect = (addressId) => {
+    setSelectedAddressId(addressId);
+    if (addressId) {
+      const selectedAddress = userAddresses.find(addr => addr.id === addressId);
+      if (selectedAddress) {
+        setFormData(prev => ({
+          ...prev,
+          direccion: selectedAddress.address,
+          ciudad: selectedAddress.city,
+          departamento: selectedAddress.department,
+          codigoPostal: selectedAddress.postal_code || '',
+          telefono: selectedAddress.phone || prev.telefono
+        }));
+      }
+    }
+  };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('es-CO', {
@@ -35,69 +113,63 @@ const CheckoutPage = () => {
   const shipping = subtotal > 200000 ? 0 : 10000;
   const total = subtotal + shipping;
 
-// En tu CheckoutPage.jsx, actualiza la parte donde rediriges:
+  // ✅ NUEVO: Función de envío actualizada
+  const handleShippingSubmit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
 
-const handleShippingSubmit = async (e) => {
-  e.preventDefault();
-  setIsProcessing(true);
+    try {
+      const orderData = {
+        customer_name: formData.nombre,
+        customer_email: formData.email,
+        customer_phone: formData.telefono,
+        customer_address: formData.direccion,
+        customer_city: formData.ciudad,
+        customer_department: formData.departamento,
+        customer_postal_code: formData.codigoPostal,
+        items: cartItems,
+        subtotal: subtotal,
+        shipping: shipping,
+        total: total,
+        // ✅ NUEVO: Incluir user_address_id si se usa dirección guardada
+        user_address_id: useSavedAddress && selectedAddressId ? selectedAddressId : null
+      };
 
-  try {
-    // Crear orden en el backend
-    const orderData = {
-      customer_name: formData.nombre,
-      customer_email: formData.email,
-      customer_phone: formData.telefono,
-      customer_address: formData.direccion,
-      customer_city: formData.ciudad,
-      customer_department: formData.departamento,
-      customer_postal_code: formData.codigoPostal,
-      items: cartItems,
-      subtotal: subtotal,
-      shipping: shipping,
-      total: total
-    };
+      const result = await orderService.createOrder(orderData);
+      const orderId = result.order.id;
+      setOrderId(orderId);
 
-    const result = await orderService.createOrder(orderData);
-    const orderId = result.order.id;
-    setOrderId(orderId);
-
-    // Crear pago en Mercado Pago
-    const paymentResult = await paymentService.createPayment(
-      total,
-      orderId,
-      formData.email,
-      formData.nombre,
-      cartItems
-    );
-
-    console.log('🔗 Payment Result:', paymentResult);
-
-    if (paymentResult.success) {
-      // 🆕 Guardar order_id en localStorage
-      localStorage.setItem('pending_order_id', orderId);
-      
-      // 🆕 Abrir Mercado Pago en NUEVA PESTAÑA
-      window.open(
-        paymentResult.sandbox_init_point || paymentResult.init_point || paymentResult.payment_url,
-        '_blank'
+      // Crear pago en Mercado Pago
+      const paymentResult = await paymentService.createPayment(
+        total,
+        orderId,
+        formData.email,
+        formData.nombre,
+        cartItems
       );
-      
-      // 🆕 Redirigir a página de verificación en la pestaña actual
-      setTimeout(() => {
-        navigate(`/payment-processing?order_id=${orderId}`);
-      }, 1000);
-      
-    } else {
-      throw new Error(paymentResult.error || 'Error al crear el enlace de pago');
-    }
 
-  } catch (error) {
-    console.error('Error creating order:', error);
-    alert(`Error al procesar el pedido: ${error.message}`);
-  } finally {
-    setIsProcessing(false);
-  }
-};
+      console.log('🔗 Payment Result:', paymentResult);
+
+      if (paymentResult.success) {
+        localStorage.setItem('pending_order_id', orderId);
+        window.open(
+          paymentResult.sandbox_init_point || paymentResult.init_point || paymentResult.payment_url,
+          '_blank'
+        );
+        setTimeout(() => {
+          navigate(`/payment-processing?order_id=${orderId}`);
+        }, 1000);
+      } else {
+        throw new Error(paymentResult.error || 'Error al crear el enlace de pago');
+      }
+
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert(`Error al procesar el pedido: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -164,6 +236,73 @@ const handleShippingSubmit = async (e) => {
               <h2 className="font-serif font-bold text-xl lg:text-2xl text-[#2f4823] mb-4 lg:mb-6">
                 Información de Envío
               </h2>
+
+              {/* ✅ NUEVO: Selector de Direcciones Guardadas */}
+              {isAuthenticated && userAddresses.length > 0 && (
+                <div className="mb-6 p-4 bg-[#f7f2e7] rounded-2xl border border-[#779385]/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-[#2f4823]">🏠 Usar dirección guardada</h3>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useSavedAddress}
+                        onChange={(e) => setUseSavedAddress(e.target.checked)}
+                        className="w-4 h-4 text-[#2f4823] border-gray-300 rounded focus:ring-[#2f4823]"
+                      />
+                      <span className="text-sm text-[#2f4823]">Usar dirección guardada</span>
+                    </label>
+                  </div>
+
+                  {useSavedAddress && (
+                    <div className="space-y-3">
+                      {loadingAddresses ? (
+                        <div className="text-center py-2">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#2f4823] mx-auto"></div>
+                          <p className="text-sm text-[#779385] mt-2">Cargando direcciones...</p>
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedAddressId}
+                          onChange={(e) => handleAddressSelect(e.target.value)}
+                          className="w-full px-4 py-3 border border-[#779385]/30 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2f4823] focus:border-transparent transition-all duration-300 bg-white"
+                        >
+                          <option value="">Seleccionar dirección...</option>
+                          {userAddresses.map((address) => (
+                            <option key={address.id} value={address.id}>
+                              {address.alias} {address.is_primary && '⭐'} - {address.address}, {address.city}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      {selectedAddressId && (
+                        <div className="text-xs text-[#779385] bg-white p-3 rounded-lg border border-[#779385]/20">
+                          <p>✅ Dirección seleccionada. Los campos se llenarán automáticamente.</p>
+                          <p className="mt-1">Puedes modificar cualquier campo manualmente si lo necesitas.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Información para usuarios no logueados */}
+              {!isAuthenticated && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-2xl border border-blue-200">
+                  <div className="flex items-center space-x-2 text-blue-800">
+                    <span>💡</span>
+                    <p className="text-sm">
+                      <strong>¿Tienes una cuenta?</strong> Inicia sesión para usar tus direcciones guardadas y acelerar el checkout.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Iniciar sesión
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleShippingSubmit} className="space-y-4 lg:space-y-6">
 

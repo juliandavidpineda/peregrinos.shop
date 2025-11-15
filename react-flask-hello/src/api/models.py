@@ -423,6 +423,8 @@ class Order(db.Model):
     # Relaciones
     user: Mapped["User"] = relationship("User", back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="order")
+    user_address_id: Mapped[str] = mapped_column(String(36), ForeignKey('user_addresses.id', name='fk_orders_user_address_id'), nullable=True)
+    user_address: Mapped["UserAddress"] = relationship("UserAddress")
 
     def __repr__(self):
         return f'<Order {self.id} - {self.customer_email}>'
@@ -444,7 +446,9 @@ class Order(db.Model):
             'status': self.status.value,
             'items': [item.serialize() for item in self.items] if self.items else [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'user_address_id': self.user_address_id,
+            'user_address': self.user_address.serialize() if self.user_address else None
         }
 
 class OrderItem(db.Model):

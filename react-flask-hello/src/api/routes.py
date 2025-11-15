@@ -1487,6 +1487,16 @@ def create_order():
         if not items or not isinstance(items, list):
             return jsonify({'message': 'Invalid or empty items list'}), 400
         
+        # ✅ NUEVO: MANEJO DE DIRECCIONES GUARDADAS
+        user_address_id = data.get('user_address_id')
+        user_address = None
+        
+        if user_address_id:
+            # Buscar la dirección guardada
+            user_address = UserAddress.query.get(user_address_id)
+            if not user_address:
+                return jsonify({'message': 'Dirección no encontrada'}), 404
+        
         # ✅ COMPATIBILIDAD con ambos formatos (inglés/español) con validación
         customer_name = customer_info.get('name') or customer_info.get('nombre')
         customer_email = customer_info.get('email')
@@ -1495,6 +1505,21 @@ def create_order():
         customer_city = customer_info.get('city') or customer_info.get('ciudad')
         customer_department = customer_info.get('department') or customer_info.get('departamento')
         customer_postal_code = customer_info.get('postal_code') or customer_info.get('codigoPostal')
+        
+        # ✅ USAR DATOS DE DIRECCIÓN GUARDADA O MANUALES
+        if user_address:
+            # ✅ VERIFICAR SEGURIDAD: que la dirección pertenece al usuario
+            user_from_email = User.query.filter_by(email=customer_email).first()
+            if user_from_email and user_address.user_id != user_from_email.id:
+                return jsonify({'message': 'La dirección no pertenece a este usuario'}), 403
+            
+            # Usar datos de la dirección guardada (pero priorizar datos del formulario)
+            customer_name = customer_name or user_address.user.name
+            customer_phone = customer_phone or user_address.phone
+            customer_address = user_address.address
+            customer_city = user_address.city
+            customer_department = user_address.department
+            customer_postal_code = user_address.postal_code or customer_postal_code
         
         # ✅ VALIDACIÓN DE SEGURIDAD: Campos requeridos
         required_fields = [customer_name, customer_email, customer_phone]
@@ -1520,7 +1545,8 @@ def create_order():
         
         # Crear la orden
         order = Order(
-            user_id=user_id,  # ✅ Asociar orden con usuario
+            user_id=user_id,
+            user_address_id=user_address_id if user_address else None,  # ✅ NUEVO: Relación con dirección
             customer_name=customer_name,
             customer_email=customer_email,
             customer_phone=customer_phone,
@@ -1594,6 +1620,7 @@ def create_order():
                 
             except Exception as stats_error:
                 # Si hay error en estadísticas, continuar sin afectar la orden
+                print(f"⚠️ Error actualizando estadísticas: {stats_error}")
                 pass
         
         db.session.commit()
@@ -1603,6 +1630,7 @@ def create_order():
             'order': order.serialize(),
             'order_id': order.id,
             'user_updated': user is not None,
+            'address_used': 'saved' if user_address else 'manual',  # ✅ NUEVO: Para debugging
             'user_stats': {
                 'total_orders': user.total_orders if user else 0,
                 'total_spent': user.total_spent if user else 0
@@ -1611,6 +1639,7 @@ def create_order():
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error creating order: {str(e)}")
         return jsonify({'message': f'Error creating order: {str(e)}'}), 400
     
 @api.route('/admin/recalculate-user-stats', methods=['POST'])
